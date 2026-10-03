@@ -1,10 +1,10 @@
-package ru.ifmo.se.weblab3.repository;
+package ru.ifmo.se.repository;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jooq.DSLContext;
 import ru.ifmo.se.app_db.jooq.tables.records.StudentRecord;
-import ru.ifmo.se.weblab3.entity.Student;
+import ru.ifmo.se.entity.Student;
 
 import java.util.List;
 

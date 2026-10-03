@@ -1,4 +1,4 @@
-package ru.ifmo.se.weblab3.repository;
+package ru.ifmo.se.repository;
 
 import jakarta.annotation.Resource;
 import jakarta.enterprise.context.ApplicationScoped;

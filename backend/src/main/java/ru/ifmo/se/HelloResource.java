@@ -1,4 +1,4 @@
-package ru.ifmo.se.weblab3;
+package ru.ifmo.se;
 
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;

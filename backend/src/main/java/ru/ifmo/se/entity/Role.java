@@ -1,4 +1,4 @@
-package ru.ifmo.se.weblab3.entity;
+package ru.ifmo.se.entity;
 
 public enum Role {
 

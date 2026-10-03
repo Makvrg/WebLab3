@@ -1,4 +1,4 @@
-package ru.ifmo.se.weblab3.entity;
+package ru.ifmo.se.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
