@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Досье студента</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Подробная информация</h1>
+            <div id="header-actions" style="display: flex; gap: 10px; align-items: center;">
+                <a href="index.html" class="btn">Назад к списку</a>
+                <button type="button" class="btn btn-danger" id="logout-btn" hidden>Выйти</button>
+            </div>
+        </header>
+
+        <div id="auth-required" class="card" style="text-align: center;" hidden>
+            <h2>Требуется авторизация</h2>
+            <p style="margin: 15px 0; color: var(--text-muted);">
+                Для просмотра подробной информации о студенте необходимо войти в систему.
+            </p>
+            <a href="auth.html" class="btn btn-primary">Перейти к авторизации</a>
+        </div>
+
+        <div class="card profile-card" id="main-content">
+            <h2 id="profile-fio">Загрузка данных...</h2>
+            <p><strong>ИСУ:</strong> <span id="profile-isu">-</span></p>
+            <p><strong>Группа:</strong> <span id="profile-group">-</span></p>
+
+            <hr>
+
+            <p><strong>Общежитие:</strong> №<span id="profile-dorm">-</span>, комната <span id="profile-room">-</span></p>
+            <p><strong>Срок заселения:</strong> <span id="profile-date">-</span></p>
+            <p><strong>Иностранец:</strong> <span id="profile-foreigner">-</span></p>
+
+            <hr>
+
+            <p><strong>Заметки:</strong></p>
+            <blockquote id="profile-notes">Нет заметок</blockquote>
+        </div>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
