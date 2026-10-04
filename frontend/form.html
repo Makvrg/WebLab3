@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Форма студента</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 id="form-title">Добавление студента</h1>
+            <div id="header-actions" style="display: flex; gap: 10px; align-items: center;">
+                <a href="index.html" class="btn">Назад к списку</a>
+                <button type="button" class="btn btn-danger" id="logout-btn" hidden>Выйти</button>
+            </div>
+        </header>
+
+        <div id="auth-required" class="card" style="text-align: center;" hidden>
+            <h2>Требуется авторизация</h2>
+            <p style="margin: 15px 0; color: var(--text-muted);">
+                Для добавления или редактирования данных необходимо войти в систему.
+            </p>
+            <a href="auth.html" class="btn btn-primary">Перейти к авторизации</a>
+        </div>
+
+        <form id="student-form" class="card">
+
+            <div class="form-group">
+                <label for="fio">ФИО студента <span class="req-star">*</span></label>
+                <input type="text" id="fio" required minlength="5" maxlength="100"
+                       pattern="[А-Яа-яЁёA-Za-z0-9]+(?: [А-Яа-яЁёA-Za-z0-9]+)*" placeholder="Иванов Иван Иванович">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="group">Группа <span class="req-star">*</span></label>
+                    <input type="text" id="group" required minlength="5" maxlength="5"
+                           pattern="[A-Z][34][1-4]\d{2}" placeholder="Например: P3224">
+                </div>
+                <div class="form-group">
+                    <label for="isu">ИСУ <span class="req-star">*</span></label>
+                    <input type="text" id="isu" required minlength="6" maxlength="6"
+                           pattern="[1-9]\d{5}" placeholder="123456">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="dorm">Номер общежития <span class="req-star">*</span></label>
+                    <input type="number" id="dorm" required min="1" max="4" placeholder="Например: 4">
+                </div>
+                <div class="form-group">
+                    <label for="room">Комната <span class="req-star">*</span></label>
+                    <input type="number" id="room" required min="100" max="2000" placeholder="Например: 813">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="date">Срок заселения <span class="req-star">*</span></label>
+                <input type="date" id="date" required min="1000-01-01" max="9999-12-31">
+            </div>
+
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="foreigner">
+                <label for="foreigner">Является иностранцем</label>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Заметки</label>
+                <textarea id="notes" rows="4" maxlength="1000"
+                          placeholder="Введите дополнительные заметки..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="submit-btn">Сохранить данные</button>
+        </form>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
