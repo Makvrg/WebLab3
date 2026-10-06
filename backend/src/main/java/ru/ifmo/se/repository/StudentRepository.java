@@ -7,6 +7,7 @@ import ru.ifmo.se.app_db.jooq.tables.records.StudentRecord;
 import ru.ifmo.se.entity.Student;
 
 import java.util.List;
+import java.util.Optional;
 
 import static ru.ifmo.se.app_db.jooq.tables.Student.STUDENT;
 
@@ -22,21 +23,40 @@ public class StudentRepository {
 
     private Student parseDomainStudent(StudentRecord record) {
         return new Student(
-                record.getIsuid(), record.getFio(),
+                record.getIsuId(), record.getFio(),
                 record.getGroup(), record.getDormitoryNumber(),
                 record.getRoom(), record.getDateOfPlacement(),
                 record.getIsNotRussian(), record.getNotes()
         );
     }
 
+    public Optional<Student> getStudentByIsuId(Integer isuId) {
+        return dslContext.selectFrom(STUDENT)
+                .where(STUDENT.IS_DELETED.isFalse(),
+                       STUDENT.ISU_ID.eq(isuId))
+                .fetchOptional()
+                .map(this::parseDomainStudent);
+    }
+
+    public boolean existsStudentByIsuId(Integer isuId) {
+        return dslContext.fetchExists(
+                dslContext.selectOne()
+                        .from(STUDENT)
+                        .where(STUDENT.IS_DELETED.isFalse(),
+                               STUDENT.ISU_ID.eq(isuId))
+        );
+    }
+
     public List<Student> getStudents() {
-        return dslContext.selectFrom(STUDENT).fetch()
+        return dslContext.selectFrom(STUDENT)
+                .where(STUDENT.IS_DELETED.isFalse())
+                .fetch()
                 .map(this::parseDomainStudent);
     }
 
     public void addStudent(Student student) {
         dslContext.insertInto(STUDENT)
-                .set(STUDENT.ISUID, student.getIsuId())
+                .set(STUDENT.ISU_ID, student.getIsuId())
                 .set(STUDENT.FIO, student.getFio())
                 .set(STUDENT.GROUP, student.getGroup())
                 .set(STUDENT.DORMITORY_NUMBER, student.getDormitoryNumber())
@@ -48,9 +68,8 @@ public class StudentRepository {
                 .execute();
     }
 
-    public boolean updateStudent(Student student) {
+    public boolean updateStudentByIsuId(Integer isuId, Student student) {
         int affectedRows = dslContext.update(STUDENT)
-                .set(STUDENT.ISUID, student.getIsuId())
                 .set(STUDENT.FIO, student.getFio())
                 .set(STUDENT.GROUP, student.getGroup())
                 .set(STUDENT.DORMITORY_NUMBER, student.getDormitoryNumber())
@@ -58,40 +77,18 @@ public class StudentRepository {
                 .set(STUDENT.DATE_OF_PLACEMENT, student.getDateOfPlacement())
                 .set(STUDENT.IS_NOT_RUSSIAN, student.getIsNotRussian())
                 .set(STUDENT.NOTES, student.getNotes())
-                .where(STUDENT.ISUID.eq(student.getIsuId()),
-                       STUDENT.IS_DELETED.eq(false))
+                .where(STUDENT.ISU_ID.eq(isuId),
+                       STUDENT.IS_DELETED.isFalse())
                 .execute();
         return affectedRows > 0;
     }
 
-    public boolean deleteStudent(Integer isuId) {
+    public boolean deleteStudentByIsuId(Integer isuId) {
         int affectedRows = dslContext.update(STUDENT)
                 .set(STUDENT.IS_DELETED, true)
-                .where(STUDENT.ISUID.eq(isuId),
-                       STUDENT.IS_DELETED.eq(false))
+                .where(STUDENT.ISU_ID.eq(isuId),
+                       STUDENT.IS_DELETED.isFalse())
                 .execute();
         return affectedRows > 0;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
