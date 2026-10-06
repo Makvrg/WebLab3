@@ -4,26 +4,27 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.ZonedDateTime;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
 @AllArgsConstructor
 public class RefreshToken {
 
-    private Integer refresh_token_id;
-    private Integer user_id;
-    private String hashed_token;
-    private ZonedDateTime expires_at;
-    private ZonedDateTime created_at;
+    private Integer refreshTokenId;
+    private Integer userId;
+    private String hashedToken;
+    private String salt;
+    private OffsetDateTime expiresAt;
+    private OffsetDateTime createdAt;
 
     @Override
     public String toString() {
         return "RefreshToken{" +
-                "refresh_token_id=" + refresh_token_id +
-                ", user_id=" + user_id +
-                ", expires_at=" + expires_at +
-                ", created_at=" + created_at +
+                "refreshTokenId=" + refreshTokenId +
+                ", userId=" + userId +
+                ", expiresAt=" + expiresAt +
+                ", createdAt=" + createdAt +
                 '}';
     }
 }

@@ -47,6 +47,15 @@ public class UserRepository {
         );
     }
 
+    public boolean existsUserByEmail(String email) {
+        return dslContext.fetchExists(
+                dslContext.selectOne()
+                        .from(USER)
+                        .where(USER.IS_DELETED.isFalse(),
+                                USER.EMAIL.eq(email))
+        );
+    }
+
     public List<User> getUsers() {
         return dslContext.selectFrom(USER)
                 .where(USER.IS_DELETED.isFalse())
@@ -65,19 +74,19 @@ public class UserRepository {
                 .execute();
     }
 
-    public boolean updateUser(User user) {
+    public boolean updateUserByLogin(String login, User user) {
         int affectedRows = dslContext.update(USER)
                 .set(USER.EMAIL, user.getEmail())
                 .set(USER.ROLE, user.getRole().name())
                 .set(USER.HASHED_PASSWORD, user.getHashedPassword())
                 .set(USER.SALT, user.getSalt())
-                .where(USER.LOGIN.eq(user.getLogin()),
+                .where(USER.LOGIN.eq(login),
                        USER.IS_DELETED.eq(false))
                 .execute();
         return affectedRows > 0;
     }
 
-    public boolean deleteUser(String login) {
+    public boolean deleteUserByLogin(String login) {
         int affectedRows = dslContext.update(USER)
                 .set(USER.IS_DELETED, true)
                 .where(USER.LOGIN.eq(login),

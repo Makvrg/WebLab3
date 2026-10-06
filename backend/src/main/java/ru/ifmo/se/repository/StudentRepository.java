@@ -68,7 +68,7 @@ public class StudentRepository {
                 .execute();
     }
 
-    public boolean updateStudent(Student student) {
+    public boolean updateStudentByIsuId(Integer isuId, Student student) {
         int affectedRows = dslContext.update(STUDENT)
                 .set(STUDENT.FIO, student.getFio())
                 .set(STUDENT.GROUP, student.getGroup())
@@ -77,13 +77,13 @@ public class StudentRepository {
                 .set(STUDENT.DATE_OF_PLACEMENT, student.getDateOfPlacement())
                 .set(STUDENT.IS_NOT_RUSSIAN, student.getIsNotRussian())
                 .set(STUDENT.NOTES, student.getNotes())
-                .where(STUDENT.ISU_ID.eq(student.getIsuId()),
+                .where(STUDENT.ISU_ID.eq(isuId),
                        STUDENT.IS_DELETED.isFalse())
                 .execute();
         return affectedRows > 0;
     }
 
-    public boolean deleteStudent(Integer isuId) {
+    public boolean deleteStudentByIsuId(Integer isuId) {
         int affectedRows = dslContext.update(STUDENT)
                 .set(STUDENT.IS_DELETED, true)
                 .where(STUDENT.ISU_ID.eq(isuId),

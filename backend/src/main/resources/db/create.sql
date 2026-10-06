@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS refresh_token (
 
      user_id INTEGER NOT NULL,
      hashed_token TEXT NOT NULL UNIQUE,
+     salt TEXT NOT NULL,
      expires_at TIMESTAMPTZ NOT NULL,
      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
      is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
