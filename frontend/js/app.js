@@ -161,6 +161,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const mainContent = document.getElementById("main-content")
             || document.getElementById("student-form");
         const headerActions = document.getElementById("header-actions");
+        const paginationBtns = document.getElementById("pagination");
 
         if (authRequiredCard) {
             authRequiredCard.hidden = false;
@@ -170,6 +171,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         if (headerActions) {
             headerActions.hidden = true;
+        }
+        if (paginationBtns) {
+            paginationBtns.hidden = true
         }
 
         return;
@@ -249,39 +253,89 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Страница списка студентов (index.html)
     if (document.getElementById("students-table")) {
-        const tableView = new TableView("#table-body", async isuId => {
-            await controller.deleteStudent(isuId);
+        const tableView = new TableView(
+            "#table-body",
 
-            const filters = getFiltersFromQuery();
-            const students = await controller.getStudents(filters);
+            async isuId => {
+                await controller.deleteStudent(isuId);
 
-            tableView.render(
-                students.map(Student.fromJSON)
-            );
-        });
+                const filters =
+                    getFiltersFromQuery();
 
-        const filterBtn = document.getElementById("filter-btn");
+                const students =
+                    await controller.getStudents(filters);
+
+                tableView.render(
+                    students.map(Student.fromJSON)
+                );
+            },
+
+            async pageNumber => {
+                try {
+                    hidePageError();
+
+                    const filters =
+                        getFiltersFromQuery();
+
+                    const students =
+                        await controller.getStudents(
+                            filters
+                        );
+
+                    tableView.render(
+                        students.map(Student.fromJSON)
+                    );
+
+                } catch (error) {
+                    handleServerError(error, {
+                        hide: [
+                            "add-btn",
+                            "filter-btn",
+                            "students-table"
+                        ]
+                    });
+                }
+            }
+        );
+
+        const filterBtn =
+            document.getElementById("filter-btn");
 
         if (filterBtn) {
-            filterBtn.addEventListener("click", event => {
-                event.preventDefault();
+            filterBtn.addEventListener(
+                "click",
+                event => {
+                    event.preventDefault();
 
-                window.location.href = "form.html?mode=filter";
-            });
+                    // Новые фильтры начинаются с первой страницы.
+                    tableView.resetPage();
+
+                    window.location.href =
+                        "form.html?mode=filter";
+                }
+            );
         }
 
         try {
             hidePageError();
 
-            const filters = getFiltersFromQuery();
-            const students = await controller.getStudents(filters);
+            const filters =
+                getFiltersFromQuery();
+
+            const students =
+                await controller.getStudents(filters);
 
             tableView.render(
                 students.map(Student.fromJSON)
             );
+
         } catch (error) {
             handleServerError(error, {
-                hide: ["add-btn", "filter-btn", "students-table"]
+                hide: [
+                    "add-btn",
+                    "filter-btn",
+                    "students-table"
+                ]
             });
         }
     }

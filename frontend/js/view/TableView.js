@@ -2,20 +2,89 @@ export class TableView {
 
     tbody;
     onDeleteCallback;
+    onPageChangeCallback;
+
+    /**
+     * Фиксированный размер страницы.
+     */
+    static PAGE_SIZE = 15;
+
+    /**
+     * Ключ текущей страницы в localStorage.
+     */
+    static PAGE_NUMBER_KEY = "pageNumber";
 
     /**
      * @param {string} tbodySelector Селектор tbody для работы со строками таблицы
      * @param {Function} onDeleteCallback (isuId: string|number) => void
+     * @param {Function} onPageChangeCallback (pageNumber: number) => void
      */
-    constructor(tbodySelector, onDeleteCallback) {
+    constructor(
+        tbodySelector,
+        onDeleteCallback,
+        onPageChangeCallback
+    ) {
         this.tbody = document.querySelector(tbodySelector);
         this.onDeleteCallback = onDeleteCallback;
+        this.onPageChangeCallback = onPageChangeCallback;
 
-        if (this.tbody) {
-            this.#initEvents();
-        }
+        this.#initPageNumber();
+        this.#initEvents();
+        this.#initPaginationEvents();
+        this.#updatePaginationButtons();
     }
 
+    /**
+     * Возвращает текущую страницу.
+     *
+     * @returns {number}
+     */
+    getCurrentPage() {
+        const pageNumber =
+            Number(
+                localStorage.getItem(
+                    TableView.PAGE_NUMBER_KEY
+                )
+            );
+
+        if (!Number.isInteger(pageNumber) || pageNumber <= 0) {
+            return 1;
+        }
+
+        return pageNumber;
+    }
+
+    /**
+     * Устанавливает текущую страницу.
+     *
+     * @param {number} pageNumber
+     */
+    setCurrentPage(pageNumber) {
+        const normalizedPage =
+            Number.isInteger(pageNumber) && pageNumber > 0
+                ? pageNumber
+                : 1;
+
+        localStorage.setItem(
+            TableView.PAGE_NUMBER_KEY,
+            String(normalizedPage)
+        );
+
+        this.#updatePaginationButtons();
+    }
+
+    /**
+     * Сбрасывает пагинацию на первую страницу.
+     */
+    resetPage() {
+        this.setCurrentPage(1);
+    }
+
+    /**
+     * Рендерит студентов и обновляет состояние кнопок пагинации.
+     *
+     * @param {Array} students
+     */
     render(students) {
         if (!this.tbody) return;
 
@@ -31,6 +100,8 @@ export class TableView {
 
             tr.appendChild(td);
             this.tbody.appendChild(tr);
+
+            this.#updatePaginationButtons(0);
 
             return;
         }
@@ -63,8 +134,11 @@ export class TableView {
             const safeIsuId =
                 encodeURIComponent(student.isuId);
 
-            const userRole = localStorage.getItem("userRole");
-            const isAdmin = userRole === "ADMIN";
+            const userRole =
+                localStorage.getItem("userRole");
+
+            const isAdmin =
+                userRole === "ADMIN";
 
             actionsTd.innerHTML = `
                 <a href="student.html?id=${safeIsuId}" class="btn btn-small">Просмотр</a>
@@ -77,6 +151,118 @@ export class TableView {
             tr.appendChild(actionsTd);
             this.tbody.appendChild(tr);
         });
+
+        this.#updatePaginationButtons(students.length);
+    }
+
+    /**
+     * Инициализирует номер страницы в localStorage.
+     */
+    #initPageNumber() {
+        const pageNumber =
+            Number(
+                localStorage.getItem(
+                    TableView.PAGE_NUMBER_KEY
+                )
+            );
+
+        if (!Number.isInteger(pageNumber) || pageNumber <= 0) {
+            localStorage.setItem(
+                TableView.PAGE_NUMBER_KEY,
+                "1"
+            );
+        }
+    }
+
+    /**
+     * Обновляет состояние кнопок пагинации.
+     *
+     * Если количество записей меньше размера страницы,
+     * значит следующей страницы нет.
+     *
+     * @param {number|null} studentsCount
+     */
+    #updatePaginationButtons(studentsCount = null) {
+        const prevBtn =
+            document.getElementById("prev-page-btn");
+
+        const nextBtn =
+            document.getElementById("next-page-btn");
+
+        const pagination =
+            document.getElementById("pagination");
+
+        if (!prevBtn || !nextBtn) {
+            return;
+        }
+
+        const currentPage =
+            this.getCurrentPage();
+
+        prevBtn.disabled =
+            currentPage <= 1;
+
+        if (studentsCount !== null) {
+            nextBtn.disabled =
+                studentsCount < TableView.PAGE_SIZE;
+        }
+
+        if (pagination) {
+            pagination.hidden = false;
+        }
+    }
+
+    /**
+     * Обработка кнопок пагинации.
+     */
+    #initPaginationEvents() {
+        const prevBtn =
+            document.getElementById("prev-page-btn");
+
+        const nextBtn =
+            document.getElementById("next-page-btn");
+
+        if (prevBtn) {
+            prevBtn.addEventListener(
+                "click",
+                () => {
+                    const currentPage =
+                        this.getCurrentPage();
+
+                    if (currentPage <= 1) {
+                        return;
+                    }
+
+                    const newPage =
+                        currentPage - 1;
+
+                    this.setCurrentPage(newPage);
+
+                    if (this.onPageChangeCallback) {
+                        this.onPageChangeCallback(newPage);
+                    }
+                }
+            );
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener(
+                "click",
+                () => {
+                    const currentPage =
+                        this.getCurrentPage();
+
+                    const newPage =
+                        currentPage + 1;
+
+                    this.setCurrentPage(newPage);
+
+                    if (this.onPageChangeCallback) {
+                        this.onPageChangeCallback(newPage);
+                    }
+                }
+            );
+        }
     }
 
     #getErrorMessage(error) {
@@ -88,21 +274,21 @@ export class TableView {
             Number(error?.status);
 
         return ({
-            400:
-                "Некорректный запрос. Проверьте введённые данные.",
+                400:
+                    "Некорректный запрос. Проверьте введённые данные.",
 
-            404:
-                "Студент для удаления не найден.",
+                404:
+                    "Студент для удаления не найден.",
 
-            409:
-                "Операция конфликтует с текущими данными.",
+                409:
+                    "Операция конфликтует с текущими данными.",
 
-            422:
-                "Сервер отклонил данные операции.",
+                422:
+                    "Сервер отклонил данные операции.",
 
-            500:
-                "Ошибка со стороны сервера."
-        }[status] || error?.message
+                500:
+                    "Ошибка со стороны сервера."
+            }[status] || error?.message
             || "Произошла неизвестная ошибка.");
     }
 
@@ -114,7 +300,6 @@ export class TableView {
             errorEl =
                 document.createElement("div");
 
-            errorEl = document.createElement("div");
             errorEl.id = "table-error";
             errorEl.className = "alert-box alert-danger";
             errorEl.setAttribute(
@@ -167,6 +352,13 @@ export class TableView {
                 tableBody.hidden = true;
             }
 
+            const pagination =
+                document.getElementById("pagination");
+
+            if (pagination) {
+                pagination.hidden = true;
+            }
+
             const title =
                 document.querySelector("h1");
 
@@ -178,14 +370,22 @@ export class TableView {
     }
 
     #showSuccess(message) {
-        let successEl
-            = document.getElementById("table-success");
+        let successEl =
+            document.getElementById("table-success");
+
         if (!successEl) {
-            successEl = document.createElement("div");
+            successEl =
+                document.createElement("div");
+
             successEl.id = "table-success";
-            successEl.className = "alert-box alert-success";
+            successEl.className =
+                "alert-box alert-success";
+
             const tableContainer =
-                document.querySelector(".table-responsive");
+                document.querySelector(
+                    ".table-responsive"
+                );
+
             if (tableContainer) {
                 tableContainer.insertAdjacentElement(
                     "beforebegin",
@@ -193,14 +393,20 @@ export class TableView {
                 );
             }
         }
+
         successEl.textContent = message;
         successEl.hidden = false;
+
         setTimeout(() => {
             successEl.hidden = true;
         }, 3000);
     }
 
     #initEvents() {
+        if (!this.tbody) {
+            return;
+        }
+
         this.tbody.addEventListener(
             "click",
             async event => {
@@ -238,7 +444,9 @@ export class TableView {
                         errorEl.hidden = true;
                     }
 
-                    this.#showSuccess("Студент успешно удален");
+                    this.#showSuccess(
+                        "Студент успешно удален"
+                    );
 
                 } catch (error) {
                     this.#showError(error);
