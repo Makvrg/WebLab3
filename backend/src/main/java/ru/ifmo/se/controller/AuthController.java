@@ -2,7 +2,6 @@ package ru.ifmo.se.controller;
 
 import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
-import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -27,28 +26,28 @@ public class AuthController {
 
     @POST
     @Path("/register")
-    public Response register(@Valid UserRegisterDto registerDto) {
+    public Response register(UserRegisterDto registerDto) {
         authService.register(registerDto);
         return Response.status(Response.Status.CREATED).build();
     }
 
     @POST
     @Path("/login")
-    public Response login(@Valid UserLoginDto loginDto) {
+    public Response login(UserLoginDto loginDto) {
         AuthResponseDto authResponse = authService.login(loginDto);
         return Response.ok(authResponse).build();
     }
 
     @POST
     @Path("/refresh")
-    public Response refresh(@Valid TokenRefreshRequestDto refreshDto) {
+    public Response refresh(TokenRefreshRequestDto refreshDto) {
         AuthResponseDto authResponse = authService.refresh(refreshDto);
         return Response.ok(authResponse).build();
     }
 
     @POST
     @Path("/logout")
-    public Response logout(@Valid LogoutRequestDto logoutDto) {
+    public Response logout(LogoutRequestDto logoutDto) {
         authService.logout(logoutDto);
         return Response.noContent().build();
     }

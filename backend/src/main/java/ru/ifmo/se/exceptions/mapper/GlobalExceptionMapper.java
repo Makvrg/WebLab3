@@ -13,6 +13,11 @@ import java.util.logging.Level;
 public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
     @Override
     public Response toResponse(Throwable exception) {
+        if (exception instanceof jakarta.json.bind.JsonbException || exception.getCause() instanceof jakarta.json.bind.JsonbException) {
+            ErrorDto error = new ErrorDto(new ErrorDto.ErrorDetail("BAD_REQUEST", "Некорректный формат JSON"));
+            return Response.status(Response.Status.BAD_REQUEST).entity(error).build();
+        }
+
         log.log(Level.SEVERE, "Внутренняя ошибка сервера при обработке запроса", exception);
 
         ErrorDto error = new ErrorDto(new ErrorDto.ErrorDetail("INTERNAL_SERVER_ERROR", "The server cannot process the error"));
