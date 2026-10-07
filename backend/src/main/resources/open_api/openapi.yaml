@@ -1,0 +1,675 @@
+openapi: 3.0.3
+info:
+  title: Student Management REST API
+  version: 1.0.0
+  description: |
+    REST API для управления студентами и аутентификации пользователей.
+
+    Аутентификация студентовых операций выполняется через Bearer JWT в заголовке
+    `Authorization`:
+
+    `Authorization: Bearer <accessToken>`
+
+    Роли:
+    - `USER` — чтение и поиск студентов.
+    - `ADMIN` — чтение, создание, изменение и удаление студентов.
+
+tags:
+  - name: Authentication
+    description: Регистрация, вход и работа с токенами.
+  - name: Students
+    description: Получение и управление студентами.
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Регистрация пользователя
+      description: Регистрирует нового пользователя.
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegisterDto'
+            example:
+              login: ivanov
+              email: ivanov@example.com
+              password: password123
+              role: USER
+      responses:
+        '201':
+          description: Пользователь успешно зарегистрирован.
+        '400':
+          description: Ошибка валидации входных данных.
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Вход пользователя
+      description: Аутентифицирует пользователя по логину и паролю.
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLoginDto'
+            example:
+              login: ivanov
+              password: password123
+      responses:
+        '200':
+          description: Успешная аутентификация.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponseDto'
+        '400':
+          description: Ошибка валидации входных данных.
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Обновление access token
+      description: Выдаёт новую пару токенов по идентификатору и значению refresh-токена.
+      operationId: refresh
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequestDto'
+            example:
+              refreshTokenId: 123
+              refreshToken: refresh-token-value
+      responses:
+        '200':
+          description: Токены успешно обновлены.
+          content:
+            application/json:
+              example:
+                accessToken: dkejnkiecie22dem
+                refreshTokenId: 2454
+                refreshToken: new-refresh-token-value
+        '400':
+          description: Отсутствует обязательное поле или входные данные невалидны.
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Выход пользователя
+      description: Инвалидирует refresh-токен пользователя.
+      operationId: logout
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequestDto'
+            example:
+              accessToken: eyJhbGciOi...
+              refreshTokenId: 123
+              refreshToken: refresh-token-value
+      responses:
+        '204':
+          description: Выход выполнен успешно.
+        '400':
+          description: Отсутствует обязательное поле или входные данные невалидны.
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /students:
+    get:
+      tags:
+        - Students
+      summary: Получить список студентов по необязательным фильтрам
+      description: Возвращает список студентов с необязательными фильтрами.
+      operationId: getStudents
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IsuIdQuery'
+        - $ref: '#/components/parameters/FioQuery'
+        - $ref: '#/components/parameters/StGroupQuery'
+        - $ref: '#/components/parameters/DormitoryNumberQuery'
+        - $ref: '#/components/parameters/RoomQuery'
+        - $ref: '#/components/parameters/DateOfPlacementQuery'
+        - $ref: '#/components/parameters/IsNotRussianQuery'
+      responses:
+        '200':
+          description: Список студентов успешно получен.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StudentDto'
+        '401':
+          description: Требуется аутентификация.
+        '403':
+          description: Недостаточно прав. Требуется роль USER или ADMIN.
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    x-query:
+      tags:
+        - Students
+      summary: Получить список студентов по необязательным фильтрам
+      description: Аналог GET /students с query-параметрами через отдельный QUERY запрос с параметрами фильтрации в теле
+      operationId: queryStudents
+
+      security:
+        - bearerAuth: [ ]
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentFilterDto'
+            example:
+              isuId: 123456
+              fio: "Иванов Иван Иванович"
+              stGroup: "P3210"
+              dormitoryNumber: 4
+              room: 512
+              dateOfPlacement: "2025-09-01"
+              isNotRussian: false
+
+      responses:
+        '200':
+          description: Students successfully retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StudentDto'
+
+        '400':
+          description: Invalid filter parameters
+
+        '401':
+          description: Authentication required
+
+        '403':
+          description: Insufficient permissions
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Students
+      summary: Создать студента
+      description: Создаёт нового студента. Доступно только пользователю с ролью ADMIN.
+      operationId: createStudent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentDto'
+            example:
+              isuId: 123456
+              fio: Иванов Иван Иванович
+              stGroup: P3111
+              dormitoryNumber: 4
+              room: 120
+              dateOfPlacement: '2026-09-01'
+              isNotRussian: false
+              notes: Дополнительная информация
+      responses:
+        '201':
+          description: Студент успешно создан.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentDto'
+        '400':
+          description: Ошибка валидации данных студента.
+        '401':
+          description: Требуется аутентификация.
+        '403':
+          description: Недостаточно прав. Требуется роль ADMIN.
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /students/{studentId}:
+    get:
+      tags:
+        - Students
+      summary: Получить студента по ID
+      description: Возвращает данные одного студента.
+      operationId: getStudent
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StudentId'
+      responses:
+        '200':
+          description: Студент найден.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentDto'
+        '401':
+          description: Требуется аутентификация.
+        '403':
+          description: Недостаточно прав. Требуется роль USER или ADMIN.
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    patch:
+      tags:
+        - Students
+      summary: Изменить студента
+      description: Обновляет данные существующего студента. Доступно только ADMIN.
+      operationId: updateStudent
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StudentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentDto'
+            example:
+              isuId: 123456
+              fio: Иванов Иван Иванович
+              stGroup: P3111
+              dormitoryNumber: 4
+              room: 121
+              dateOfPlacement: '2026-09-01'
+              isNotRussian: false
+              notes: Комната изменена
+      responses:
+        '200':
+          description: Студент успешно обновлён.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentDto'
+        '400':
+          description: Ошибка валидации данных студента.
+        '401':
+          description: Требуется аутентификация.
+        '403':
+          description: Недостаточно прав. Требуется роль ADMIN.
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Students
+      summary: Удалить студента
+      description: Удаляет существующего студента. Доступно только ADMIN.
+      operationId: deleteStudent
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StudentId'
+      responses:
+        '204':
+          description: Студент успешно удалён.
+        '401':
+          description: Требуется аутентификация.
+        '403':
+          description: Недостаточно прав. Требуется роль ADMIN.
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "JWT access token. Передавайте его как `Authorization: Bearer <token>`."
+
+  parameters:
+    StudentId:
+      name: studentId
+      in: path
+      required: true
+      description: Идентификатор студента.
+      schema:
+        type: integer
+        format: int32
+        example: 123
+
+    IsuIdQuery:
+      name: isuId
+      in: query
+      required: false
+      description: ИСУ студента.
+      schema:
+        type: integer
+        format: int32
+        example: 123456
+
+    FioQuery:
+      name: fio
+      in: query
+      required: false
+      description: ФИО студента или часть ФИО.
+      schema:
+        type: string
+        example: Иванов Иван
+
+    StGroupQuery:
+      name: stGroup
+      in: query
+      required: false
+      description: Номер учебной группы.
+      schema:
+        type: string
+        example: P3111
+
+    DormitoryNumberQuery:
+      name: dormitoryNumber
+      in: query
+      required: false
+      description: Номер общежития.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 4
+        example: 4
+
+    RoomQuery:
+      name: room
+      in: query
+      required: false
+      description: Номер комнаты.
+      schema:
+        type: integer
+        format: int32
+        minimum: 100
+        maximum: 2000
+        example: 120
+
+    DateOfPlacementQuery:
+      name: dateOfPlacement
+      in: query
+      required: false
+      description: Дата заселения. Рекомендуемый формат — YYYY-MM-DD.
+      schema:
+        type: string
+        example: '2026-09-01'
+
+    IsNotRussianQuery:
+      name: isNotRussian
+      in: query
+      required: false
+      description: Признак иностранного студента.
+      schema:
+        type: boolean
+        example: false
+
+  responses:
+    InternalServerError:
+      description: Сервер не смог обработать запрос.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: INTERNAL_SERVER_ERROR
+              message: The server cannot process the error
+
+  schemas:
+    ErrorResponse:
+      type: object
+      description: Формат серверной ошибки, подтверждённый текущим fallback-ответом приложения.
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetails'
+      required:
+        - error
+
+    ErrorDetails:
+      type: object
+      properties:
+        code:
+          type: string
+          example: INTERNAL_SERVER_ERROR
+        message:
+          type: string
+          example: The server cannot process the error
+      required:
+        - code
+        - message
+
+    AuthResponseDto:
+      type: object
+      description: Результат аутентификации или обновления токенов.
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token для авторизованных запросов.
+          example: eyJhbGciOiJIUzI1NiJ9...
+        refreshTokenId:
+          type: integer
+          format: int32
+          description: Идентификатор refresh-токена.
+          example: 123
+        refreshToken:
+          type: string
+          description: Refresh token.
+          example: 8f1c2d0e...
+        role:
+          type: string
+          description: Роль пользователя.
+          example: USER
+
+    LogoutRequestDto:
+      type: object
+      description: Данные, необходимые для выхода пользователя.
+      properties:
+        accessToken:
+          type: string
+          description: Access token пользователя.
+          example: eyJhbGciOiJIUzI1NiJ9...
+        refreshTokenId:
+          type: integer
+          format: int32
+          description: Идентификатор refresh-токена.
+          example: 123
+        refreshToken:
+          type: string
+          description: Refresh token.
+          example: 8f1c2d0e...
+      required:
+        - refreshTokenId
+        - refreshToken
+
+    TokenRefreshRequestDto:
+      type: object
+      description: Данные для получения новой пары токенов.
+      properties:
+        refreshTokenId:
+          type: integer
+          format: int32
+          description: Идентификатор refresh-токена.
+          example: 123
+        refreshToken:
+          type: string
+          minLength: 1
+          description: Refresh token.
+          example: 8f1c2d0e...
+      required:
+        - refreshTokenId
+        - refreshToken
+
+    UserLoginDto:
+      type: object
+      description: Учётные данные пользователя.
+      properties:
+        login:
+          type: string
+          minLength: 1
+          description: Логин пользователя.
+          example: ivanov
+        password:
+          type: string
+          minLength: 1
+          format: password
+          description: Пароль пользователя.
+          example: password123
+      required:
+        - login
+        - password
+
+    UserRegisterDto:
+      type: object
+      description: Данные для регистрации пользователя.
+      properties:
+        login:
+          type: string
+          minLength: 3
+          maxLength: 50
+          pattern: '^[A-Za-z0-9_\-.]+$'
+          description: Логин от 3 до 50 символов. Разрешены латинские буквы, цифры, `_`, `-` и `.`.
+          example: ivanov
+        email:
+          type: string
+          format: email
+          description: Электронная почта пользователя.
+          example: ivanov@example.com
+        password:
+          type: string
+          minLength: 8
+          format: password
+          description: Пароль длиной не менее 8 символов.
+          example: password123
+        role:
+          type: string
+          description: Роль, назначаемая пользователю при регистрации. Точный список значений зависит от enum `Role`.
+          example: USER
+      required:
+        - login
+        - email
+        - password
+        - role
+
+    StudentDto:
+      type: object
+      description: Данные студента.
+      properties:
+        isuId:
+          type: integer
+          format: int32
+          minimum: 100000
+          maximum: 999999
+          description: Шестизначный идентификатор ИСУ.
+          example: 123456
+        fio:
+          type: string
+          minLength: 5
+          maxLength: 100
+          description: Фамилия, имя и отчество студента. Допускаются буквы, цифры и пробелы; должна присутствовать хотя бы одна буква.
+          example: Иванов Иван Иванович
+        stGroup:
+          type: string
+          pattern: '^[A-Z][34][1-4]\d{2}$'
+          description: Номер учебной группы.
+          example: P3111
+        dormitoryNumber:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 4
+          description: Номер общежития от 1 до 4.
+          example: 4
+        room:
+          type: integer
+          format: int32
+          minimum: 100
+          maximum: 2000
+          description: Номер комнаты от 100 до 2000.
+          example: 120
+        dateOfPlacement:
+          type: string
+          format: date
+          description: Дата заселения в формате YYYY-MM-DD.
+          example: '2026-09-01'
+        isNotRussian:
+          type: boolean
+          description: Признак того, что студент не является гражданином России.
+          example: false
+        notes:
+          type: string
+          maxLength: 1000
+          description: Дополнительные примечания.
+          example: Примечание о размещении
+      required:
+        - isuId
+        - fio
+        - stGroup
+        - dormitoryNumber
+        - room
+        - dateOfPlacement
+        - isNotRussian
+
+    StudentFilterDto:
+      type: object
+      description: Необязательные фильтры для поиска студентов.
+      properties:
+        isuId:
+          type: integer
+          format: int32
+          description: Фильтр по идентификатору ИСУ.
+          example: 123456
+        fio:
+          type: string
+          description: Фильтр по ФИО.
+          example: Иванов Иван
+        stGroup:
+          type: string
+          description: Фильтр по учебной группе.
+          example: P3111
+        dormitoryNumber:
+          type: integer
+          format: int32
+          description: Фильтр по номеру общежития.
+          example: 4
+        room:
+          type: integer
+          format: int32
+          description: Фильтр по номеру комнаты.
+          example: 120
+        dateOfPlacement:
+          type: string
+          description: Фильтр по дате заселения. Рекомендуемый формат — YYYY-MM-DD.
+          example: '2026-09-01'
+        isNotRussian:
+          type: boolean
+          description: Фильтр по признаку иностранного студента.
+          example: false
