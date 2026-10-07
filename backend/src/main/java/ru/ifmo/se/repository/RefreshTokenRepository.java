@@ -38,14 +38,16 @@ public class RefreshTokenRepository {
     }
 
     public void addToken(RefreshToken token) {
-        dslContext.insertInto(REFRESH_TOKEN)
+        Integer generatedId = dslContext.insertInto(REFRESH_TOKEN)
                 .set(REFRESH_TOKEN.USER_ID, token.getUserId())
                 .set(REFRESH_TOKEN.HASHED_TOKEN, token.getHashedToken())
                 .set(REFRESH_TOKEN.SALT, token.getSalt())
                 .set(REFRESH_TOKEN.EXPIRES_AT, token.getExpiresAt())
                 .set(REFRESH_TOKEN.CREATED_AT, token.getCreatedAt())
                 .set(REFRESH_TOKEN.IS_DELETED, false)
-                .execute();
+                .returningResult(REFRESH_TOKEN.REFRESH_TOKEN_ID)
+                .fetchOneInto(Integer.class);
+        token.setRefreshTokenId(generatedId);
     }
 
     public boolean deleteTokenByTokenId(Integer tokenId) {

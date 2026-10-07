@@ -7,7 +7,6 @@ import ru.ifmo.se.app_db.jooq.tables.records.UserRecord;
 import ru.ifmo.se.entity.Role;
 import ru.ifmo.se.entity.User;
 
-import java.util.List;
 import java.util.Optional;
 
 import static ru.ifmo.se.app_db.jooq.tables.User.USER;
