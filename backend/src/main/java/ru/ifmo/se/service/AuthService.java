@@ -173,11 +173,11 @@ public class AuthService {
                 now
         );
 
-        Integer refreshTokenId = refreshTokenRepository.addToken(refreshTokenEntity);
+        refreshTokenRepository.addToken(refreshTokenEntity);
 
         return new AuthResponseDto(
                 accessToken,
-                refreshTokenId,
+                refreshTokenEntity.getRefreshTokenId(),
                 rawRefreshToken,
                 user.getRole().name()
         );
