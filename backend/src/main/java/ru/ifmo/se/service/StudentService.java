@@ -69,7 +69,11 @@ public class StudentService {
     }
 
     public List<StudentDto> getStudents(StudentFilterDto filters) {
-        List<Student> students = repo.getStudents();
+        // TODO Валидация данных пагинации
+        List<Student> students = repo.getStudents(
+                (filters.getPageNumber() - 1) * filters.getPageSize(),
+                filters.getPageSize() * filters.getPageNumber()
+        );
 
         if (filters == null) {
             return students.stream()

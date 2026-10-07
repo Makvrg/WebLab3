@@ -17,4 +17,6 @@ public class StudentFilterDto {
     private Short room;
     private String dateOfPlacement;
     private Boolean isNotRussian;
+    private Integer pageSize;
+    private Integer pageNumber;
 }
