@@ -24,9 +24,9 @@ public class UserRepository {
 
     private User parseDomainUser(UserRecord record) {
         return new User(
-                record.getLogin(), record.getEmail(),
-                Role.valueOf(record.getRole()), record.getHashedPassword(),
-                record.getSalt()
+                record.getUserId(), record.getLogin(),
+                record.getEmail(), Role.valueOf(record.getRole()), 
+                record.getHashedPassword(), record.getSalt()
         );
     }
 
