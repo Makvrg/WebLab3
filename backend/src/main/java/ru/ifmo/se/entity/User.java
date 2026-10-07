@@ -10,10 +10,10 @@ import lombok.Setter;
 public class User {
 
     private Integer userId;
-    private String login; //
-    private String email; //
-    private Role role; //
-    private String hashedPassword; //
+    private String login;
+    private String email;
+    private Role role;
+    private String hashedPassword;
     private String salt;
 
     @Override

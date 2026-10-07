@@ -17,23 +17,47 @@ export class Controller {
     }
 
     async login(login, password) {
-        return await this.request_response_cycle(`${Controller.AUTH_URL}/login`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ login, password })
-        });
+        return await this.request_response_cycle(`${Controller.AUTH_URL}/login`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({login, password})
+            });
     }
 
     async register(userData) {
-        return await this.request_response_cycle(`${Controller.AUTH_URL}/register`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(userData)
-        });
+        return await this.request_response_cycle(`${Controller.AUTH_URL}/register`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(userData)
+            });
+    }
+
+    async refresh(refreshTokenId, refreshToken) {
+        return await this.request_response_cycle(`${Controller.AUTH_URL}/refresh`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({refreshTokenId, refreshToken})
+            });
+    }
+
+    async logout(accessToken, refreshTokenId, refreshToken) {
+        return await this.request_response_cycle(`${Controller.AUTH_URL}/logout`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({accessToken, refreshTokenId, refreshToken})
+            });
     }
 
     async getStudents(filters = {}) {
@@ -104,18 +128,78 @@ export class Controller {
 
     async request_response_cycle(url, options = {}) {
         let response;
+
+        const accessToken = localStorage.getItem("accessToken");
+
+        const headers = {
+            Accept: "application/json",
+            ...options.headers
+        };
+
+        if (accessToken) {
+            headers.Authorization = `Bearer ${accessToken}`;
+        }
+
         try {
             response = await fetch(url, {
                 ...options,
-                headers: {
-                    Accept: "application/json",
-                    ...options.headers
-                }
+                headers
             });
         } catch (error) {
             throw this.createNetworkError(error);
         }
-        return await this.processResponse(response);
+
+        if (response.status !== 401 || options._retry) {
+            return await this.processResponse(response);
+        }
+
+        const refreshTokenId = localStorage.getItem("refreshTokenId");
+        const refreshToken = localStorage.getItem("refreshToken");
+
+        if (!refreshTokenId || !refreshToken) {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("refreshTokenId");
+            localStorage.removeItem("refreshToken");
+            localStorage.removeItem("userRole");
+
+            return await this.processResponse(response);
+        }
+
+        try {
+            const data = await this.refresh(
+                refreshTokenId,
+                refreshToken
+            );
+
+            if (!data?.accessToken) {
+                throw new Error("Не удалось получить новый accessToken");
+            }
+            localStorage.setItem("accessToken", data.accessToken);
+            if (!data?.refreshTokenId) {
+                throw new Error("Не удалось получить новый refreshTokenId");
+            }
+            localStorage.setItem("refreshTokenId", data.refreshTokenId);
+            if (!data?.refreshToken) {
+                throw new Error("Не удалось получить новый refreshToken");
+            }
+            localStorage.setItem("refreshToken", data.refreshToken);
+
+            return await this.request_response_cycle(url, {
+                ...options,
+                _retry: true,
+                headers: {
+                    ...options.headers,
+                    Authorization: `Bearer ${data.accessToken}`
+                }
+            });
+
+        } catch (error) {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("refreshTokenId");
+            localStorage.removeItem("refreshToken");
+            localStorage.removeItem("userRole")
+            throw error;
+        }
     }
 
     async processResponse(response) {
