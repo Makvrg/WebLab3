@@ -130,8 +130,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const controller = Controller.getInstance();
 
     const accessToken = localStorage.getItem("accessToken");
-    const refreshToken = localStorage.getItem("refreshToken")
-    const refreshTokenId = localStorage.getItem("refreshTokenId")
     const userRole = localStorage.getItem("userRole");
     const isAuthPage = window.location.pathname.endsWith("auth.html");
 
@@ -139,9 +137,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (logoutBtn) {
         if (accessToken) {
             logoutBtn.hidden = false;
-            logoutBtn.addEventListener("click", () => {
+            logoutBtn.addEventListener("click", async () => {
                 try {
-                    controller.logout(accessToken, refreshTokenId, refreshToken)
+                    const refreshTokenId = localStorage.getItem("refreshTokenId")
+                    await controller.logout(
+                        localStorage.getItem("accessToken"),
+                        localStorage.getItem("refreshToken"),
+                        localStorage.getItem("refreshTokenId")
+                    );
                     localStorage.removeItem("accessToken");
                     localStorage.removeItem("refreshToken");
                     localStorage.removeItem("refreshTokenId");

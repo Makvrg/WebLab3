@@ -12,6 +12,8 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.ext.Provider;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import ru.ifmo.se.exceptions.ForbiddenException;
 import ru.ifmo.se.exceptions.UnauthorizedException;
 
@@ -22,13 +24,18 @@ import java.util.List;
 
 @Provider
 @Priority(Priorities.AUTHENTICATION)
+@NoArgsConstructor(force = true, access = AccessLevel.PROTECTED)
 public class JwtAuthFilter implements ContainerRequestFilter {
 
     @Context
     private ResourceInfo resourceInfo;
 
-    @Inject
     private JwtProvider jwtProvider;
+
+    @Inject
+    public JwtAuthFilter(JwtProvider jwtProvider) {
+        this.jwtProvider = jwtProvider;
+    }
 
     @Override
     public void filter(ContainerRequestContext requestContext) {

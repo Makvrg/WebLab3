@@ -2,6 +2,8 @@ package ru.ifmo.se.repository;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.jooq.DSLContext;
 import ru.ifmo.se.app_db.jooq.tables.records.StudentRecord;
 import ru.ifmo.se.entity.Student;
@@ -12,6 +14,7 @@ import java.util.Optional;
 import static ru.ifmo.se.app_db.jooq.tables.Student.STUDENT;
 
 @ApplicationScoped
+@NoArgsConstructor(force = true, access = AccessLevel.PROTECTED)
 public class StudentRepository {
 
     private final DSLContext dslContext;
@@ -42,8 +45,7 @@ public class StudentRepository {
         return dslContext.fetchExists(
                 dslContext.selectOne()
                         .from(STUDENT)
-                        .where(STUDENT.IS_DELETED.isFalse(),
-                               STUDENT.ISU_ID.eq(isuId))
+                        .where(STUDENT.ISU_ID.eq(isuId))
         );
     }
 

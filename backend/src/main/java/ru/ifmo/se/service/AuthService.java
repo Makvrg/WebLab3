@@ -4,6 +4,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import ru.ifmo.se.dto.AuthResponseDto;
 import ru.ifmo.se.dto.LogoutRequestDto;
 import ru.ifmo.se.dto.TokenRefreshRequestDto;
@@ -24,6 +26,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
+@NoArgsConstructor(force = true, access = AccessLevel.PROTECTED)
 public class AuthService {
 
     private static final long REFRESH_EXP_DAYS = 7;

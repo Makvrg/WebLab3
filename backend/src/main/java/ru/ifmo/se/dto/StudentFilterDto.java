@@ -10,6 +10,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StudentFilterDto {
+
     private Integer isuId;
     private String fio;
     private String stGroup;

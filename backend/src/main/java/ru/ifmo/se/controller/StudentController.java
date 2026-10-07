@@ -29,10 +29,13 @@ public class StudentController {
             @QueryParam("dormitoryNumber") Short dormitoryNumber,
             @QueryParam("room") Short room,
             @QueryParam("dateOfPlacement") String dateOfPlacement,
-            @QueryParam("isNotRussian") Boolean isNotRussian
+            @QueryParam("isNotRussian") Boolean isNotRussian,
+            @QueryParam("pageSize") Integer pageSize,
+            @QueryParam("pageNumber") Integer pageNumber
     ) {
         StudentFilterDto filters = new StudentFilterDto(
-                isuId, fio, stGroup, dormitoryNumber, room, dateOfPlacement, isNotRussian
+                isuId, fio, stGroup, dormitoryNumber, room,
+                dateOfPlacement, isNotRussian, pageSize, pageNumber
         );
 
         List<StudentDto> students = studentService.getStudents(filters);

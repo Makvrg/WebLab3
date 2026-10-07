@@ -2,6 +2,8 @@ package ru.ifmo.se.repository;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.jooq.DSLContext;
 import ru.ifmo.se.app_db.jooq.tables.records.RefreshTokenRecord;
 import ru.ifmo.se.entity.RefreshToken;
@@ -12,6 +14,7 @@ import java.util.Optional;
 import static ru.ifmo.se.app_db.jooq.tables.RefreshToken.REFRESH_TOKEN;
 
 @ApplicationScoped
+@NoArgsConstructor(force = true, access = AccessLevel.PROTECTED)
 public class RefreshTokenRepository {
 
     private final DSLContext dslContext;

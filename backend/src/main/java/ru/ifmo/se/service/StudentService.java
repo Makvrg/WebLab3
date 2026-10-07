@@ -4,6 +4,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import ru.ifmo.se.dto.StudentDto;
 import ru.ifmo.se.dto.StudentFilterDto;
 import ru.ifmo.se.entity.Student;
@@ -17,6 +19,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
+@NoArgsConstructor(force = true, access = AccessLevel.PROTECTED)
 public class StudentService {
 
     private final StudentRepository repo;
