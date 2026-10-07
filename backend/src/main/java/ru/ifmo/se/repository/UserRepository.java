@@ -25,7 +25,7 @@ public class UserRepository {
     private User parseDomainUser(UserRecord record) {
         return new User(
                 record.getUserId(), record.getLogin(),
-                record.getEmail(), Role.valueOf(record.getRole()), 
+                record.getEmail(), Role.valueOf(record.getRole()),
                 record.getHashedPassword(), record.getSalt()
         );
     }
@@ -34,6 +34,14 @@ public class UserRepository {
         return dslContext.selectFrom(USER)
                 .where(USER.IS_DELETED.isFalse(),
                        USER.LOGIN.eq(login))
+                .fetchOptional()
+                .map(this::parseDomainUser);
+    }
+
+    public Optional<User> getUserById(Integer userId) {
+        return dslContext.selectFrom(USER)
+                .where(USER.IS_DELETED.isFalse(),
+                        USER.USER_ID.eq(userId))
                 .fetchOptional()
                 .map(this::parseDomainUser);
     }
@@ -54,13 +62,6 @@ public class UserRepository {
                         .where(USER.IS_DELETED.isFalse(),
                                 USER.EMAIL.eq(email))
         );
-    }
-
-    public List<User> getUsers() {
-        return dslContext.selectFrom(USER)
-                .where(USER.IS_DELETED.isFalse())
-                .fetch()
-                .map(this::parseDomainUser);
     }
 
     public void addUser(User user) {

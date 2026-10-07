@@ -66,14 +66,14 @@ export class AuthView {
 
     getLoginData() {
         return {
-            login: document.getElementById("login-username")?.value.trim() || "",
+            login: document.getElementById("login-login")?.value.trim() || "",
             password: document.getElementById("login-password")?.value || ""
         };
     }
 
     getRegisterData() {
         return {
-            login: document.getElementById("reg-username")?.value.trim() || "",
+            login: document.getElementById("reg-login")?.value.trim() || "",
             email: document.getElementById("reg-email")?.value.trim() || "",
             password: document.getElementById("reg-password")?.value || "",
             confirmPassword: document.getElementById("reg-password-confirm")?.value || "",
