@@ -129,26 +129,34 @@ function getFilterQuery(student) {
 document.addEventListener("DOMContentLoaded", async () => {
     const controller = Controller.getInstance();
 
-    const token = localStorage.getItem("accessToken");
+    const accessToken = localStorage.getItem("accessToken");
+    const refreshToken = localStorage.getItem("refreshToken")
+    const refreshTokenId = localStorage.getItem("refreshTokenId")
     const userRole = localStorage.getItem("userRole");
     const isAuthPage = window.location.pathname.endsWith("auth.html");
 
     const logoutBtn = document.getElementById("logout-btn");
     if (logoutBtn) {
-        if (token) {
+        if (accessToken) {
             logoutBtn.hidden = false;
             logoutBtn.addEventListener("click", () => {
-                localStorage.removeItem("accessToken");
-                localStorage.removeItem("refreshToken");
-                localStorage.removeItem("userRole");
-                window.location.href = "auth.html";
+                try {
+                    controller.logout(accessToken, refreshTokenId, refreshToken)
+                    localStorage.removeItem("accessToken");
+                    localStorage.removeItem("refreshToken");
+                    localStorage.removeItem("refreshTokenId");
+                    localStorage.removeItem("userRole");
+                    window.location.href = "auth.html";
+            } catch (error) {
+                    handleServerError(error)
+                }
             });
         } else {
             logoutBtn.hidden = true;
         }
     }
 
-    if (!token && !isAuthPage) {
+    if (!accessToken && !isAuthPage) {
         const authRequiredCard = document.getElementById("auth-required");
         const mainContent = document.getElementById("main-content")
             || document.getElementById("student-form");
@@ -195,12 +203,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             async credentials => {
                 try {
                     const data = await controller.login(
-                        credentials.username,
+                        credentials.login,
                         credentials.password
                     );
 
                     localStorage.setItem("accessToken", data.accessToken);
                     localStorage.setItem("refreshToken", data.refreshToken);
+                    localStorage.setItem("refreshTokenId", data.refreshTokenId)
                     localStorage.setItem("userRole", data.role || "USER");
 
                     authView.showAlert("Авторизация успешна! Перенаправление...", "success");
@@ -208,7 +217,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                         window.location.href = "index.html";
                     }, 800);
                 } catch (error) {
-                    authView().showAlert(
+                    authView.showAlert(
                         error.message || "Неверный логин или пароль",
                         "danger"
                     );
@@ -218,14 +227,13 @@ document.addEventListener("DOMContentLoaded", async () => {
                 try {
                     await controller.register(userData);
 
-                    const authView = new AuthView();
                     authView.showAlert("Регистрация успешна! Теперь вы можете войти.", "success");
                     authView.resetRegisterForm();
                     setTimeout(() => {
                         authView.switchTab("login");
                     }, 1200);
                 } catch (error) {
-                    authView().showAlert(
+                    authView.showAlert(
                         error.message || "Не удалось зарегистрировать пользователя",
                         "danger"
                     );
