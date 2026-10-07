@@ -38,6 +38,14 @@ public class UserRepository {
                 .map(this::parseDomainUser);
     }
 
+    public Optional<User> getUserById(Integer userId) {
+        return dslContext.selectFrom(USER)
+                .where(USER.IS_DELETED.isFalse(),
+                        USER.USER_ID.eq(userId))
+                .fetchOptional()
+                .map(this::parseDomainUser);
+    }
+
     public boolean existsUserByLogin(String login) {
         return dslContext.fetchExists(
                 dslContext.selectOne()
@@ -54,13 +62,6 @@ public class UserRepository {
                         .where(USER.IS_DELETED.isFalse(),
                                 USER.EMAIL.eq(email))
         );
-    }
-
-    public List<User> getUsers() {
-        return dslContext.selectFrom(USER)
-                .where(USER.IS_DELETED.isFalse())
-                .fetch()
-                .map(this::parseDomainUser);
     }
 
     public void addUser(User user) {

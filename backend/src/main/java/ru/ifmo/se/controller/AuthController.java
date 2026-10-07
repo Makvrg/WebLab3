@@ -28,8 +28,8 @@ public class AuthController {
     @POST
     @Path("/register")
     public Response register(@Valid UserRegisterDto registerDto) {
-        AuthResponseDto authResponse = authService.register(registerDto);
-        return Response.status(Response.Status.CREATED).entity(authResponse).build();
+        authService.register(registerDto);
+        return Response.status(Response.Status.CREATED).build();
     }
 
     @POST
