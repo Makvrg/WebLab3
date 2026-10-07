@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="1" author="Max_Lekomscev">
+        <sqlFile path="db/migrations/1__create_student_table.sql" relativeToChangelogFile="false" encoding="utf8"/>
+    </changeSet>
+
+    <changeSet id="2" author="Max_Lekomscev">
+        <sqlFile path="db/migrations/2__create_user_table.sql" relativeToChangelogFile="false" encoding="utf8"/>
+    </changeSet>
+
+    <changeSet id="3" author="Max_Lekomscev">
+        <sqlFile path="db/migrations/3__create_uq_user_login_active_index.sql" relativeToChangelogFile="false" encoding="utf8"/>
+    </changeSet>
+
+    <changeSet id="4" author="Max_Lekomscev">
+        <sqlFile path="db/migrations/4__create_uq_user_email_active_index.sql" relativeToChangelogFile="false" encoding="utf8"/>
+    </changeSet>
+
+    <changeSet id="5" author="Max_Lekomscev">
+        <sqlFile path="db/migrations/5__create_refresh_token_table.sql" relativeToChangelogFile="false" encoding="utf8"/>
+    </changeSet>
+
+</databaseChangeLog>
