@@ -195,7 +195,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             async credentials => {
                 try {
                     const data = await controller.login(
-                        credentials.username,
+                        credentials.login,
                         credentials.password
                     );
 

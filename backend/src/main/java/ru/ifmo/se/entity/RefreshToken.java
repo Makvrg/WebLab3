@@ -11,9 +11,9 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 public class RefreshToken {
 
-    private Integer refreshTokenId;
+    private Integer refreshTokenId; //
     private Integer userId;
-    private String hashedToken;
+    private String hashedToken; //
     private String salt;
     private OffsetDateTime expiresAt;
     private OffsetDateTime createdAt;

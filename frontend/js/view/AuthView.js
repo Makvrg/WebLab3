@@ -10,8 +10,8 @@ export class AuthView {
     #onRegisterCallback;
 
     /**
-     * @param {Function} onLoginCallback ({username, password}) => Promise<void>
-     * @param {Function} onRegisterCallback ({username, email, password, role}) => Promise<void>
+     * @param {Function} onLoginCallback ({login, password}) => Promise<void>
+     * @param {Function} onRegisterCallback ({login, email, password, role}) => Promise<void>
      */
     constructor(onLoginCallback, onRegisterCallback) {
         this.#loginForm = document.getElementById("login-form");
@@ -66,14 +66,14 @@ export class AuthView {
 
     getLoginData() {
         return {
-            username: document.getElementById("login-username")?.value.trim() || "",
+            login: document.getElementById("login-login")?.value.trim() || "",
             password: document.getElementById("login-password")?.value || ""
         };
     }
 
     getRegisterData() {
         return {
-            username: document.getElementById("reg-username")?.value.trim() || "",
+            login: document.getElementById("reg-login")?.value.trim() || "",
             email: document.getElementById("reg-email")?.value.trim() || "",
             password: document.getElementById("reg-password")?.value || "",
             confirmPassword: document.getElementById("reg-password-confirm")?.value || "",
@@ -108,7 +108,7 @@ export class AuthView {
 
             if (this.#onRegisterCallback) {
                 await this.#onRegisterCallback({
-                    username: data.username,
+                    login: data.login,
                     email: data.email,
                     password: data.password,
                     role: data.role

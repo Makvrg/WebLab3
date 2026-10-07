@@ -16,13 +16,13 @@ export class Controller {
         return Controller.#instance;
     }
 
-    async login(username, password) {
+    async login(login, password) {
         return await this.request_response_cycle(`${Controller.AUTH_URL}/login`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ login, password })
         });
     }
 

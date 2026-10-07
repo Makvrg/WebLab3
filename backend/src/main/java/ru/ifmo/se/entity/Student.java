@@ -11,14 +11,14 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class Student {
 
-    private Integer isuId;
-    private String fio;
-    private String group;
-    private Short dormitoryNumber;
-    private Short room;
-    private LocalDate dateOfPlacement;
-    private Boolean isNotRussian;
-    private String notes;
+    private Integer isuId; //
+    private String fio; //
+    private String group; //
+    private Short dormitoryNumber; //
+    private Short room; //
+    private LocalDate dateOfPlacement; //
+    private Boolean isNotRussian; //
+    private String notes; //
 
     @Override
     public String toString() {

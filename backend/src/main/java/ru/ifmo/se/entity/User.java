@@ -9,10 +9,11 @@ import lombok.Setter;
 @AllArgsConstructor
 public class User {
 
-    private String login;
-    private String email;
-    private Role role;
-    private String hashedPassword;
+    private Integer userId;
+    private String login; //
+    private String email; //
+    private Role role; //
+    private String hashedPassword; //
     private String salt;
 
     @Override
