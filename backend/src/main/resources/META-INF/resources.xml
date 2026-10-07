@@ -5,6 +5,16 @@
         JdbcUrl jdbc:postgresql://localhost:5432/app_db
         UserName postgres
         Password postgres
-        JtaManaged true
+
+        JtaManaged = true
+
+        InitialSize = 5
+        MinIdle = 5
+        MaxIdle = 10
+        MaxActive = 20
+        MaxWaitTime = 5 seconds
+
+        TestOnBorrow = true
+        ValidationQuery = SELECT 1
     </Resource>
 </resources>
