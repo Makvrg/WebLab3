@@ -64,7 +64,7 @@ public class StudentController {
 
     @PATCH
     @Path("/{studentId}")
-    @RolesAllowed({"ADMIN"}) // Изменять данные может только ADMIN[cite: 3]
+    @RolesAllowed({"ADMIN"})
     public Response updateStudent(@PathParam("studentId") Integer studentId, StudentDto data) {
         StudentDto student = studentService.updateStudent(studentId, data);
         return Response.ok(student).build();
