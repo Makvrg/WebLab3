@@ -4,6 +4,7 @@ export class Controller {
     static BASE_URL = "http://127.0.0.1:5000";
     static API_URL = `${Controller.BASE_URL}/students`;
     static AUTH_URL = `${Controller.BASE_URL}/auth`;
+    static PAGE_SIZE = 15
 
     constructor() {
         throw new Error("Используйте Controller.getInstance() вместо new");
@@ -61,6 +62,12 @@ export class Controller {
     }
 
     async getStudents(filters = {}) {
+        let pageNumber = Number(localStorage.getItem("pageNumber"))
+        if (!pageNumber || pageNumber <= 0) {
+            pageNumber = 1
+            localStorage.setItem("pageNumber", String(pageNumber))
+        }
+
         const url = new URL(Controller.API_URL);
 
         const allowedFilters = [
@@ -70,7 +77,7 @@ export class Controller {
             "dormitoryNumber",
             "room",
             "dateOfPlacement",
-            "isNotRussian",
+            "isNotRussian"
         ];
 
         for (const key of allowedFilters) {
@@ -80,6 +87,8 @@ export class Controller {
                 url.searchParams.set(key, String(value));
             }
         }
+        url.searchParams.set("pageSize", String(Controller.PAGE_SIZE));
+        url.searchParams.set("pageNumber", String(pageNumber));
 
         return await this.request_response_cycle(url.toString(), {
             method: "GET"

@@ -47,9 +47,14 @@ public class StudentRepository {
         );
     }
 
-    public List<Student> getStudents() {
-        return dslContext.selectFrom(STUDENT)
+    public List<Student> getStudents(int start, int end) {
+        int limit = end - start;
+        return dslContext
+                .selectFrom(STUDENT)
                 .where(STUDENT.IS_DELETED.isFalse())
+                .orderBy(STUDENT.STUDENT_ID)
+                .limit(limit)
+                .offset(start)
                 .fetch()
                 .map(this::parseDomainStudent);
     }
