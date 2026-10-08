@@ -1,6 +1,7 @@
 package ru.ifmo.se.security;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import lombok.NoArgsConstructor;
 import ru.ifmo.se.exceptions.ServerException;
 
 import java.nio.charset.StandardCharsets;
@@ -10,18 +11,14 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 @ApplicationScoped
+@NoArgsConstructor
 public class PasswordHasher {
 
     private static final int SALT_BYTES = 16;
     private final SecureRandom secureRandom = new SecureRandom();
-    private final String pepper;
-
-    public PasswordHasher() {
-        String envPepper = System.getenv("PASSWORD_PEPPER");
-        this.pepper = (envPepper != null && !envPepper.isBlank())
-                ? envPepper
-                : "super-secret-pepper-weblab3-itmo-2026";
-    }
+    private static final String PEPPER = "super-secret-pepper-weblab3-itmo-2026";
+    private static final String ALGORITHM = "SHA-256";
+    private static final Integer ITERATIONS = 100_000;
 
     public String generateSalt() {
         byte[] salt = new byte[SALT_BYTES];
@@ -31,13 +28,18 @@ public class PasswordHasher {
 
     public String hash(String rawValue, String salt) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            MessageDigest digest = MessageDigest.getInstance(ALGORITHM);
             digest.update(salt.getBytes(StandardCharsets.UTF_8));
-            digest.update(pepper.getBytes(StandardCharsets.UTF_8));
+            digest.update(PEPPER.getBytes(StandardCharsets.UTF_8));
+
             byte[] hashedBytes = digest.digest(rawValue.getBytes(StandardCharsets.UTF_8));
+            for (int i = 1; i <= ITERATIONS - 1; i++) {
+
+            }
+
             return Base64.getEncoder().encodeToString(hashedBytes);
         } catch (NoSuchAlgorithmException e) {
-            throw new ServerException("Ошибка алгоритма хеширования SHA-256", e);
+            throw new ServerException("Ошибка алгоритма хеширования " + ALGORITHM, e);
         }
     }
 

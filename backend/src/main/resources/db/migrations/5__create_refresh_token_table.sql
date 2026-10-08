@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS refresh_token (
      salt TEXT NOT NULL,
      expires_at TIMESTAMPTZ NOT NULL,
      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
      is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
 
      CONSTRAINT fk_refresh_token_user

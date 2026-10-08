@@ -2,6 +2,7 @@ package ru.ifmo.se.exceptions.mapper;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
@@ -12,7 +13,9 @@ import java.util.stream.Collectors;
 
 @Provider
 @Log
-public class ConstraintViolationExceptionMapper implements ExceptionMapper<ConstraintViolationException> {
+public class ConstraintViolationExceptionMapper
+        implements ExceptionMapper<ConstraintViolationException> {
+
     @Override
     public Response toResponse(ConstraintViolationException exception) {
         String messages = exception.getConstraintViolations().stream()
@@ -21,8 +24,12 @@ public class ConstraintViolationExceptionMapper implements ExceptionMapper<Const
 
         log.warning("Ошибка валидации JAX-RS: " + messages);
 
-        ErrorDto error = new ErrorDto(new ErrorDto.ErrorDetail("BAD_REQUEST", messages));
+        ErrorDto error = new ErrorDto(
+                new ErrorDto.ErrorDetail("BAD_REQUEST", messages)
+        );
+
         return Response.status(Response.Status.BAD_REQUEST)
+                .type(MediaType.APPLICATION_JSON)
                 .entity(error)
                 .build();
     }

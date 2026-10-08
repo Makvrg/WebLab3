@@ -2,8 +2,11 @@ package ru.ifmo.se.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import ru.ifmo.se.dto.AuthResponseDto;
 import ru.ifmo.se.dto.LogoutRequestDto;
 import ru.ifmo.se.dto.TokenRefreshRequestDto;
@@ -24,6 +27,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
+@NoArgsConstructor(force = true, access = AccessLevel.PROTECTED)
 public class AuthService {
 
     private static final long REFRESH_EXP_DAYS = 7;
@@ -62,6 +66,7 @@ public class AuthService {
         }
     }
 
+    @Transactional
     public void register(UserRegisterDto registerDto) {
         validateDto(registerDto);
 
@@ -88,6 +93,7 @@ public class AuthService {
         userRepository.addUser(newUser);
     }
 
+    @Transactional
     public AuthResponseDto login(UserLoginDto loginDto) {
         validateDto(loginDto);
 
@@ -107,6 +113,7 @@ public class AuthService {
         return issueTokens(user);
     }
 
+    @Transactional
     public AuthResponseDto refresh(TokenRefreshRequestDto refreshDto) {
         validateDto(refreshDto);
 
@@ -138,6 +145,7 @@ public class AuthService {
         return issueTokens(user);
     }
 
+    @Transactional
     public void logout(LogoutRequestDto logoutDto) {
         validateDto(logoutDto);
 
@@ -154,6 +162,7 @@ public class AuthService {
                 });
     }
 
+    @Transactional
     private AuthResponseDto issueTokens(User user) {
         OffsetDateTime now = OffsetDateTime.now();
         OffsetDateTime expiresAt = now.plusDays(REFRESH_EXP_DAYS);

@@ -7,7 +7,7 @@ export class TableView {
     /**
      * Фиксированный размер страницы.
      */
-    static PAGE_SIZE = 15;
+    static PAGE_SIZE = 8;
 
     /**
      * Ключ текущей страницы в localStorage.
@@ -159,19 +159,7 @@ export class TableView {
      * Инициализирует номер страницы в localStorage.
      */
     #initPageNumber() {
-        const pageNumber =
-            Number(
-                localStorage.getItem(
-                    TableView.PAGE_NUMBER_KEY
-                )
-            );
-
-        if (!Number.isInteger(pageNumber) || pageNumber <= 0) {
-            localStorage.setItem(
-                TableView.PAGE_NUMBER_KEY,
-                "1"
-            );
-        }
+        localStorage.setItem(TableView.PAGE_NUMBER_KEY, "1");
     }
 
     /**
