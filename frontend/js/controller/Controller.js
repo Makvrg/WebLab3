@@ -4,7 +4,7 @@ export class Controller {
     static BASE_URL = "http://127.0.0.1:5000";
     static API_URL = `${Controller.BASE_URL}/students`;
     static AUTH_URL = `${Controller.BASE_URL}/auth`;
-    static PAGE_SIZE = 15
+    static PAGE_SIZE = 8
 
     constructor() {
         throw new Error("Используйте Controller.getInstance() вместо new");

@@ -139,11 +139,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             logoutBtn.hidden = false;
             logoutBtn.addEventListener("click", async () => {
                 try {
-                    const refreshTokenId = localStorage.getItem("refreshTokenId")
                     await controller.logout(
                         localStorage.getItem("accessToken"),
-                        localStorage.getItem("refreshToken"),
-                        localStorage.getItem("refreshTokenId")
+                        localStorage.getItem("refreshTokenId"),
+                        localStorage.getItem("refreshToken")
                     );
                     localStorage.removeItem("accessToken");
                     localStorage.removeItem("refreshToken");

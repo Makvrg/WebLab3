@@ -2,6 +2,7 @@ package ru.ifmo.se.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.AccessLevel;
@@ -65,6 +66,7 @@ public class AuthService {
         }
     }
 
+    @Transactional
     public void register(UserRegisterDto registerDto) {
         validateDto(registerDto);
 
@@ -91,6 +93,7 @@ public class AuthService {
         userRepository.addUser(newUser);
     }
 
+    @Transactional
     public AuthResponseDto login(UserLoginDto loginDto) {
         validateDto(loginDto);
 
@@ -110,6 +113,7 @@ public class AuthService {
         return issueTokens(user);
     }
 
+    @Transactional
     public AuthResponseDto refresh(TokenRefreshRequestDto refreshDto) {
         validateDto(refreshDto);
 
@@ -141,6 +145,7 @@ public class AuthService {
         return issueTokens(user);
     }
 
+    @Transactional
     public void logout(LogoutRequestDto logoutDto) {
         validateDto(logoutDto);
 
@@ -157,6 +162,7 @@ public class AuthService {
                 });
     }
 
+    @Transactional
     private AuthResponseDto issueTokens(User user) {
         OffsetDateTime now = OffsetDateTime.now();
         OffsetDateTime expiresAt = now.plusDays(REFRESH_EXP_DAYS);

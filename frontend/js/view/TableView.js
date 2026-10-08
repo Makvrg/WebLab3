@@ -7,7 +7,7 @@ export class TableView {
     /**
      * Фиксированный размер страницы.
      */
-    static PAGE_SIZE = 15;
+    static PAGE_SIZE = 8;
 
     /**
      * Ключ текущей страницы в localStorage.

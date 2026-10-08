@@ -2,6 +2,7 @@ package ru.ifmo.se.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.AccessLevel;
@@ -71,6 +72,7 @@ public class StudentService {
         );
     }
 
+    @Transactional
     public List<StudentDto> getStudents(StudentFilterDto filters) {
         // TODO Валидация данных пагинации
         List<Student> students = repo.getStudents(
@@ -110,16 +112,19 @@ public class StudentService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public List<StudentDto> queryStudents(StudentFilterDto queryData) {
         return getStudents(queryData);
     }
 
+    @Transactional
     public StudentDto getStudent(Integer isuId) {
         Student student = repo.getStudentByIsuId(isuId)
                 .orElseThrow(() -> new NotFoundException("Студент с ИСУ " + isuId + " не найден."));
         return toDto(student);
     }
 
+    @Transactional
     public StudentDto createStudent(StudentDto data) {
         validateStudentData(data);
 
@@ -132,6 +137,7 @@ public class StudentService {
         return toDto(newStudent);
     }
 
+    @Transactional
     public StudentDto updateStudent(Integer isuId, StudentDto data) {
         if (data == null) {
             throw new ValidationException("Данные студента отсутствуют");
@@ -148,6 +154,7 @@ public class StudentService {
         return toDto(updatedStudent);
     }
 
+    @Transactional
     public void deleteStudent(Integer isuId) {
         if (!repo.deleteStudentByIsuId(isuId)) {
             throw new NotFoundException("Студент с ИСУ " + isuId + " не найден.");

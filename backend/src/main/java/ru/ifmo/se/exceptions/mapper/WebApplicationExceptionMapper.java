@@ -2,6 +2,7 @@ package ru.ifmo.se.exceptions.mapper;
 
 import jakarta.ws.rs.NotSupportedException;
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
@@ -16,10 +17,16 @@ public class WebApplicationExceptionMapper implements ExceptionMapper<WebApplica
     public Response toResponse(WebApplicationException exception) {
         if (exception instanceof NotSupportedException) {
             log.warning("Неподдерживаемый тип данных (не JSON): " + exception.getMessage());
+
             ErrorDto error = new ErrorDto(
-                    new ErrorDto.ErrorDetail("BAD_REQUEST", "Request body must be JSON")
+                    new ErrorDto.ErrorDetail(
+                            "BAD_REQUEST",
+                            "Request body must be JSON"
+                    )
             );
+
             return Response.status(Response.Status.BAD_REQUEST)
+                    .type(MediaType.APPLICATION_JSON)
                     .entity(error)
                     .build();
         }
@@ -36,6 +43,7 @@ public class WebApplicationExceptionMapper implements ExceptionMapper<WebApplica
         );
 
         return Response.status(status)
+                .type(MediaType.APPLICATION_JSON)
                 .entity(error)
                 .build();
     }

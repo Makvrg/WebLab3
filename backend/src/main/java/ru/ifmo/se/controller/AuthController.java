@@ -8,8 +8,6 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
 import ru.ifmo.se.dto.AuthResponseDto;
 import ru.ifmo.se.dto.LogoutRequestDto;
 import ru.ifmo.se.dto.TokenRefreshRequestDto;
@@ -21,15 +19,10 @@ import ru.ifmo.se.service.AuthService;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @PermitAll
-@NoArgsConstructor(force = true, access = AccessLevel.PROTECTED)
 public class AuthController {
 
-    private final AuthService authService;
-
     @Inject
-    public AuthController(AuthService authService) {
-        this.authService = authService;
-    }
+    private AuthService authService;
 
     @POST
     @Path("/register")
