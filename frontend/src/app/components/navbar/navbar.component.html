@@ -18,7 +18,7 @@
       Профиль ({{ currentUserLogin() }})
       <span class="role-badge"
             [class.badge-admin]="userRole() === 'ADMIN'"
-            [class.badge-user]="userRole() !== 'ADMIN'">
+            [class.badge-user]="userRole() === 'USER'">
                     {{ userRole() }}
                 </span>
     </a>
