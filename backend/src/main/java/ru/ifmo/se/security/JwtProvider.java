@@ -83,6 +83,15 @@ public class JwtProvider {
             throw new UnauthorizedException("Не удалось прочитать данные токена");
         }
 
+        if (payload.getUserId() == null || payload.getUserId() < 0) {
+            throw new UnauthorizedException("Некорректный id юзера");
+        }
+
+        if (payload.getLogin() == null || payload.getLogin().isBlank() ||
+                payload.getLogin().length() < 3 || payload.getLogin().length() > 50) {
+            throw new UnauthorizedException("Некорректный логин в токене");
+        }
+
         if (payload.getExp() < Instant.now().getEpochSecond()) {
             throw new UnauthorizedException("Срок действия токена истек");
         }

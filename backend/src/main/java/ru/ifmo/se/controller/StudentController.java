@@ -45,7 +45,6 @@ public class StudentController {
     @QUERY
     @RolesAllowed({"USER", "ADMIN"})
     public Response queryStudents(StudentFilterDto queryData) {
-        // JAX-RS автоматически десериализует тело JSON в объект StudentFilterDto
         List<StudentDto> students = studentService.queryStudents(queryData);
         return Response.ok(students).build();
     }
