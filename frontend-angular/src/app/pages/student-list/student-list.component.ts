@@ -1,10 +1,10 @@
-import { Component, OnInit, inject, signal, computed, DestroyRef } from '@angular/core';
+import {Component, OnInit, inject, signal, computed, DestroyRef, WritableSignal, Signal} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { BehaviorSubject, combineLatest, of } from 'rxjs';
+import {BehaviorSubject, combineLatest, Observable, of} from 'rxjs';
 import {
   catchError,
   debounceTime,
@@ -30,13 +30,13 @@ export type SortDirection = 'asc' | 'desc';
   styleUrls: ['./student-list.component.css'],
 })
 export class StudentListComponent implements OnInit {
-  private readonly studentService = inject(StudentService);
-  private readonly userContext = inject(UserContextService);
-  private readonly fb = inject(FormBuilder);
-  private readonly destroyRef = inject(DestroyRef);
+  private readonly studentService: StudentService = inject(StudentService);
+  private readonly userContext: UserContextService = inject(UserContextService);
+  private readonly fb: FormBuilder = inject(FormBuilder);
+  private readonly destroyRef: DestroyRef = inject(DestroyRef);
 
-  readonly pageSize = 8;
-  readonly isAdmin = this.userContext.isAdmin;
+  readonly pageSize: number = 8;
+  readonly isAdmin: Signal<boolean> = this.userContext.isAdmin;
 
   readonly filterForm = this.fb.group({
     fio: [''],
@@ -48,26 +48,29 @@ export class StudentListComponent implements OnInit {
     isNotRussian: [''],
   });
 
-  readonly showFilters = signal<boolean>(false);
-  readonly isLoading = signal<boolean>(false);
-  readonly errorMessage = signal<string | null>(null);
-  readonly successMessage = signal<string | null>(null);
-  readonly deletingId = signal<number | null>(null);
+  readonly showFilters: WritableSignal<boolean> = signal<boolean>(false);
+  readonly isLoading: WritableSignal<boolean> = signal<boolean>(false);
+  readonly errorMessage: WritableSignal<string | null> = signal<string | null>(null);
+  readonly successMessage: WritableSignal<string | null> = signal<string | null>(null);
+  readonly deletingId: WritableSignal<number | null> = signal<number | null>(null);
 
-  readonly currentPage = signal<number>(this.getInitialPage());
-  readonly sortField = signal<SortField>('isuId');
-  readonly sortDirection = signal<SortDirection>('asc');
+  readonly currentPage: WritableSignal<number> = signal<number>(this.getInitialPage());
+  readonly sortField: WritableSignal<SortField> = signal<SortField>('isuId');
+  readonly sortDirection: WritableSignal<SortDirection> = signal<SortDirection>('asc');
 
-  private readonly rawStudents = signal<Student[]>([]);
-  private readonly page$ = new BehaviorSubject<number>(this.currentPage());
-  private readonly reload$ = new BehaviorSubject<void>(undefined);
+  private readonly rawStudents: WritableSignal<Student[]> = signal<Student[]>([]);
+  private readonly page$: BehaviorSubject<number> =
+    new BehaviorSubject<number>(this.currentPage());
+  private readonly reload$: BehaviorSubject<void> =
+    new BehaviorSubject<void>(undefined);
 
-  readonly hasNextPage = computed(() => this.rawStudents().length >= this.pageSize);
+  readonly hasNextPage: Signal<boolean> =
+    computed(() => this.rawStudents().length >= this.pageSize);
 
-  readonly students = computed<Student[]>(() => {
-    const list = [...this.rawStudents()];
-    const field = this.sortField();
-    const dir = this.sortDirection() === 'asc' ? 1 : -1;
+  readonly students: Signal<Student[]> = computed<Student[]>(() => {
+    const list: Student[] = [...this.rawStudents()];
+    const field: SortField = this.sortField();
+    const dir: number = this.sortDirection() === 'asc' ? 1 : -1;
 
     return list.sort((a, b) => {
       const valA = a[field];
@@ -81,11 +84,14 @@ export class StudentListComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const filters$ = this.filterForm.valueChanges.pipe(
+    const filters$: Observable<StudentFilter> = this.filterForm.valueChanges.pipe(
       startWith(this.filterForm.getRawValue()),
       debounceTime(300),
       map((raw) => this.normalizeFilters(raw)),
-      distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)),
+      distinctUntilChanged(
+        (prev: StudentFilter, curr: StudentFilter) =>
+          JSON.stringify(prev) === JSON.stringify(curr)
+      ),
       tap(() => {
         if (this.currentPage() !== 1) {
           this.setPage(1);

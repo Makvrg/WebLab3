@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, WritableSignal, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
@@ -31,9 +31,9 @@ export class ProfileComponent implements OnInit {
   private readonly router: Router = inject(Router);
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
 
-  readonly user = signal<ProfileView | null>(null);
-  readonly errorMessage = signal<string | null>(null);
-  readonly isLoggingOut = signal<boolean>(false);
+  readonly user: WritableSignal<ProfileView | null> = signal<ProfileView | null>(null);
+  readonly errorMessage: WritableSignal<string | null> = signal<string | null>(null);
+  readonly isLoggingOut: WritableSignal<boolean> = signal<boolean>(false);
 
   ngOnInit(): void {
     this.loadProfile();

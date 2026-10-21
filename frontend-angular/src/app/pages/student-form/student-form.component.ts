@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, DestroyRef } from '@angular/core';
+import {Component, OnInit, inject, signal, DestroyRef, WritableSignal} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -16,16 +16,16 @@ import { Student } from '../../entity/Student';
   styleUrls: ['./student-form.component.css'],
 })
 export class StudentFormComponent implements OnInit {
-  private readonly fb = inject(FormBuilder);
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
-  private readonly studentService = inject(StudentService);
-  private readonly destroyRef = inject(DestroyRef);
+  private readonly fb: FormBuilder = inject(FormBuilder);
+  private readonly route: ActivatedRoute = inject(ActivatedRoute);
+  private readonly router: Router = inject(Router);
+  private readonly studentService: StudentService = inject(StudentService);
+  private readonly destroyRef: DestroyRef = inject(DestroyRef);
 
-  readonly isEditMode = signal<boolean>(false);
-  readonly isLoadingData = signal<boolean>(false);
-  readonly isSubmitting = signal<boolean>(false);
-  readonly errorMessage = signal<string | null>(null);
+  readonly isEditMode: WritableSignal<boolean> = signal<boolean>(false);
+  readonly isLoadingData: WritableSignal<boolean> = signal<boolean>(false);
+  readonly isSubmitting: WritableSignal<boolean> = signal<boolean>(false);
+  readonly errorMessage: WritableSignal<string | null> = signal<string | null>(null);
 
   private editingIsuId: number | null = null;
 
@@ -60,7 +60,7 @@ export class StudentFormComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const idParam = this.route.snapshot.paramMap.get('id');
+    const idParam: string | null = this.route.snapshot.paramMap.get('id');
 
     if (idParam) {
       const numericId = Number(idParam);
