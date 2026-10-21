@@ -6,7 +6,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "frontend-angular": {
+    "frontend": {
       "projectType": "application",
       "schematics": {},
       "root": "",
