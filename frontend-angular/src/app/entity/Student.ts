@@ -1,15 +1,3 @@
-export interface StudentFilter {
-  isuId?: number | string | null;
-  fio?: string | null;
-  stGroup?: string | null;
-  dormitoryNumber?: number | string | null;
-  room?: number | string | null;
-  dateOfPlacement?: string | null;
-  isNotRussian?: boolean | string | null;
-  pageSize?: number;
-  pageNumber?: number;
-}
-
 export class Student {
   constructor(
     public isuId: number,
