@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal, computed, DestroyRef } from '@angula
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, combineLatest, of } from 'rxjs';
 import {
@@ -14,9 +15,9 @@ import {
   switchMap,
   tap,
 } from 'rxjs/operators';
-import { StudentService, ApiError } from '../../services/student.service';
+import { StudentService, StudentFilter } from '../../services/student.service';
 import { UserContextService } from '../../user-context/user-context.service';
-import { Student, StudentFilter } from '../../entity/Student';
+import { Student } from '../../entity/Student';
 
 export type SortField = 'isuId' | 'fio' | 'stGroup' | 'dormitoryNumber' | 'room';
 export type SortDirection = 'asc' | 'desc';
@@ -99,9 +100,23 @@ export class StudentListComponent implements OnInit {
           this.errorMessage.set(null);
         }),
         switchMap(([filters, page]) =>
-          this.studentService.getStudents(filters, page, this.pageSize).pipe(
-            catchError((err: ApiError) => {
-              this.errorMessage.set(err.message);
+          this.studentService.getStudents(filters, page).pipe(
+            map((items) => (items ?? []).map((raw) => new Student(
+              Number(raw.isuId),
+              String(raw.fio ?? ''),
+              String(raw.stGroup ?? ''),
+              Number(raw.dormitoryNumber),
+              Number(raw.room),
+              String(raw.dateOfPlacement ?? ''),
+              Boolean(raw.isNotRussian),
+              raw.notes ? String(raw.notes) : ''
+            ))),
+            catchError((err: HttpErrorResponse) => {
+              const msg =
+                err.status === 0
+                  ? 'Не удалось связаться с сервером.'
+                  : err.error?.error?.message || err.error?.message || 'Не удалось загрузить список студентов.';
+              this.errorMessage.set(msg);
               return of([] as Student[]);
             }),
             finalize(() => this.isLoading.set(false))
@@ -166,8 +181,12 @@ export class StudentListComponent implements OnInit {
           this.flashSuccess('Студент успешно удален');
           this.reload$.next();
         },
-        error: (err: ApiError) => {
-          this.errorMessage.set(err.message);
+        error: (err: HttpErrorResponse) => {
+          const msg =
+            err.status === 0
+              ? 'Не удалось связаться с сервером.'
+              : err.error?.error?.message || err.error?.message || 'Не удалось удалить студента.';
+          this.errorMessage.set(msg);
         },
       });
   }
@@ -185,14 +204,18 @@ export class StudentListComponent implements OnInit {
 
   private normalizeFilters(raw: any): StudentFilter {
     return {
-      fio: raw.fio?.trim() || null,
-      isuId: raw.isuId ? Number(raw.isuId) : null,
-      stGroup: raw.stGroup?.trim() || null,
-      dormitoryNumber: raw.dormitoryNumber ? Number(raw.dormitoryNumber) : null,
-      room: raw.room ? Number(raw.room) : null,
-      dateOfPlacement: raw.dateOfPlacement || null,
+      fio: raw.fio?.trim() || undefined,
+      isuId: raw.isuId ? Number(raw.isuId) : undefined,
+      stGroup: raw.stGroup?.trim() || undefined,
+      dormitoryNumber: raw.dormitoryNumber ? Number(raw.dormitoryNumber) : undefined,
+      room: raw.room ? Number(raw.room) : undefined,
+      dateOfPlacement: raw.dateOfPlacement || undefined,
       isNotRussian:
-        raw.isNotRussian === 'true' || raw.isNotRussian === 'false' ? raw.isNotRussian : null,
+        raw.isNotRussian === 'true'
+          ? true
+          : raw.isNotRussian === 'false'
+            ? false
+            : undefined,
     };
   }
 

@@ -17,6 +17,10 @@ export class UserContextService {
     );
   });
 
+  readonly isAdmin: Signal<boolean> = computed(() => {
+    return this._user()?.role === 'ADMIN';
+  });
+
   setUser(user: UserContext | null): void {
     this._user.set(user);
   }
