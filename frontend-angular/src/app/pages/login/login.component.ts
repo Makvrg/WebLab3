@@ -85,7 +85,6 @@ export class LoginComponent {
       error?: unknown;
     };
 
-    // Сообщение из тела HTTP-ответа.
     if (
       typeof err.error === 'object' &&
       err.error !== null &&
