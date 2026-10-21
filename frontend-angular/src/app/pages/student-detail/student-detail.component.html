@@ -1,0 +1,51 @@
+<div class="detail-header">
+  <h2>Подробная информация о студенте</h2>
+  <div style="display: flex; gap: 10px;">
+    @if (isAdmin() && student()) {
+    <a [routerLink]="['/students', student()!.isuId, 'edit']"
+       class="btn btn-primary">
+      Редактировать
+    </a>
+    }
+    <a routerLink="/students" class="btn">Назад к списку</a>
+  </div>
+</div>
+
+@if (errorMessage()) {
+<div id="page-error" class="alert-box alert-danger" role="alert">
+  {{ errorMessage() }}
+</div>
+}
+
+@if (isLoading()) {
+<div class="card loading-container">
+  <div class="spinner spinner-primary"></div>
+  <span>Загрузка досье студента...</span>
+</div>
+} @else if (student(); as s) {
+<div class="card profile-card" id="main-content">
+  <h2 id="profile-fio">{{ s.fio }}</h2>
+  <p><strong>ИСУ:</strong> <span id="profile-isu">{{ s.isuId }}</span></p>
+  <p><strong>Группа:</strong> <span id="profile-group">{{ s.stGroup }}</span></p>
+
+  <hr>
+
+  <p>
+    <strong>Общежитие:</strong> №<span id="profile-dorm">{{ s.dormitoryNumber }}</span>,
+    комната <span id="profile-room">{{ s.room }}</span>
+  </p>
+  <p>
+    <strong>Срок заселения:</strong>
+    <span id="profile-date">{{ s.dateOfPlacement | date:'dd.MM.yyyy' }}</span>
+  </p>
+  <p>
+    <strong>Иностранец:</strong>
+    <span id="profile-foreigner">{{ s.isNotRussian ? 'Да' : 'Нет' }}</span>
+  </p>
+
+  <hr>
+
+  <p><strong>Заметки:</strong></p>
+  <blockquote id="profile-notes">{{ s.notes || 'Нет заметок' }}</blockquote>
+</div>
+}

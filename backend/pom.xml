@@ -16,7 +16,7 @@
         <maven.compiler.source>21</maven.compiler.source>
         <junit.version>5.11.0</junit.version>
     </properties>
-
+    npx.cmd @angular/cli@latest new frontend-angular --routing --style=css
     <dependencies>
         <dependency>
             <groupId>jakarta.validation</groupId>

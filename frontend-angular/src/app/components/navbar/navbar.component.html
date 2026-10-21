@@ -1,0 +1,44 @@
+<header class="app-header">
+  <a routerLink="/students" class="brand-link">
+    <h1>Заявки на общежитие</h1>
+  </a>
+
+  <div class="header-actions" id="header-actions">
+    @if (isAuthenticated()) {
+    <a routerLink="/students"
+       routerLinkActive="nav-link-active"
+       [routerLinkActiveOptions]="{ exact: true }"
+       class="btn">
+      Список студентов
+    </a>
+
+    <a routerLink="/profile"
+       routerLinkActive="nav-link-active"
+       class="btn">
+      Профиль ({{ currentUserLogin() }})
+      <span class="role-badge"
+            [class.badge-admin]="userRole() === 'ADMIN'"
+            [class.badge-user]="userRole() === 'USER'">
+                    {{ userRole() }}
+                </span>
+    </a>
+
+    <button type="button"
+            class="btn btn-danger"
+            id="logout-btn"
+            [disabled]="isLoggingOut()"
+            (click)="onLogout()">
+      @if (isLoggingOut()) {
+      <span class="spinner"></span>
+      }
+      Выйти
+    </button>
+    } @else {
+    <a routerLink="/login"
+       routerLinkActive="nav-link-active"
+       class="btn btn-primary">
+      Войти в систему
+    </a>
+    }
+  </div>
+</header>

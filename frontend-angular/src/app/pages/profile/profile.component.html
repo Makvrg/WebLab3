@@ -1,0 +1,55 @@
+<div class="detail-header">
+  <h2>Профиль пользователя</h2>
+  <a routerLink="/students" class="btn">Назад к списку</a>
+</div>
+
+@if (errorMessage()) {
+<div class="alert-box alert-danger" role="alert">
+  {{ errorMessage() }}
+</div>
+}
+
+@if (user(); as currentUser) {
+<div class="card profile-card">
+  <h2>
+    <span>{{ currentUser.login }}</span>
+    <span class="role-badge"
+          [class.badge-admin]="currentUser.role === 'ADMIN'"
+          [class.badge-user]="currentUser.role !== 'ADMIN'">
+                {{ currentUser.role }}
+            </span>
+  </h2>
+
+  <p><strong>ID пользователя:</strong> <span>{{ currentUser.userId || '—' }}</span></p>
+  <p><strong>Логин:</strong> <span>{{ currentUser.login }}</span></p>
+  @if (currentUser.email) {
+  <p><strong>Электронная почта:</strong> <span>{{ currentUser.email }}</span></p>
+  }
+  <p><strong>Роль в системе:</strong> <span>{{ currentUser.role }}</span></p>
+
+  <hr>
+
+  <p><strong>Доступные полномочия:</strong></p>
+  <blockquote>
+    @if (currentUser.role === 'ADMIN') {
+    Полный административный доступ: просмотр, поиск, фильтрация, добавление новых студентов, редактирование карточек и удаление записей.
+    } @else {
+    Базовый доступ (USER): просмотр списка заявок, детальной карточки студента, фильтрация и сортировка данных.
+    }
+  </blockquote>
+
+  <hr>
+
+  <div style="display: flex; gap: 10px; justify-content: flex-end;">
+    <button type="button"
+            class="btn btn-danger"
+            [disabled]="isLoggingOut()"
+            (click)="onLogout()">
+      @if (isLoggingOut()) {
+      <span class="spinner"></span>
+      }
+      Выйти из аккаунта
+    </button>
+  </div>
+</div>
+}
