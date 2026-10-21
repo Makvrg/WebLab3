@@ -70,12 +70,12 @@ export const routes: Routes = [
           },
           // Обновление данных студента
           {
-            path: ':id/update',
+            path: ':id/edit',
             component: StudentFormComponent,
             title: 'Редактирование студента',
             canActivate: [isAdminGuard],
             data: {
-              formMode: 'update',
+              formMode: 'edit',
             },
           },
           // Просмотр конкретного студента
