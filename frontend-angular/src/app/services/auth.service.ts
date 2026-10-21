@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import {
   Observable, catchError, finalize,
@@ -71,7 +71,6 @@ export class AuthService {
 
   logout(): Observable<void> {
     const body = {
-      accessToken: this.getAccessToken(),
       refreshTokenId: localStorage.getItem('refreshTokenId'),
       refreshToken: localStorage.getItem('refreshToken')
     };

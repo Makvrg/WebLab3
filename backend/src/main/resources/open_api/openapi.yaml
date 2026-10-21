@@ -123,7 +123,6 @@ paths:
             schema:
               $ref: '#/components/schemas/LogoutRequestDto'
             example:
-              accessToken: eyJhbGciOi...
               refreshTokenId: 123
               refreshToken: refresh-token-value
       responses:

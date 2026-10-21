@@ -15,7 +15,7 @@ export interface StudentFilters {
 }
 
 @Injectable({ providedIn: 'root' })
-export class StudentsService {
+export class StudentService {
   private http = inject(HttpClient);
   private readonly pageSize = 8;
 
