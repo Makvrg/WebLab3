@@ -11,7 +11,7 @@ import { AUTH_URL } from './api.constants';
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
 
-  const authBase = new URL(AUTH_URL);
+  const authBase = new URL(AUTH_URL, window.location.origin);
   const authPath: string = authBase.pathname.replace(/\/+$/, '');
 
   let requestUrl: URL;
