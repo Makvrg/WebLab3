@@ -2,7 +2,8 @@
 <resources>
     <Resource id="AppDataSource" type="DataSource">
         JdbcDriver org.postgresql.Driver
-        JdbcUrl jdbc:postgresql://host.docker.internal:5432/app_db
+        JdbcUrl jdbc:postgresql://localhost:5432/app_db <!--при запуске локально из Идеи-->
+<!--    JdbcUrl jdbc:postgresql://host.docker.internal:5432/app_db при запуске через Докер-->
         UserName postgres
         Password postgres
 
