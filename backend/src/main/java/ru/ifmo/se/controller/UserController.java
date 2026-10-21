@@ -24,7 +24,7 @@ public class UserController {
     @GET
     @Path("/{userId}")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response getStudent(@PathParam("userId") Integer userId) {
+    public Response getUser(@PathParam("userId") Integer userId) {
 
         UserProfileDto user = userService.getAccessibleUser(
                 userId,

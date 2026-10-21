@@ -13,8 +13,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class LogoutRequestDto {
 
-    private String accessToken;
-
     @NotNull(message = "ID refresh-токена не может быть пустым")
     private Integer refreshTokenId;
 

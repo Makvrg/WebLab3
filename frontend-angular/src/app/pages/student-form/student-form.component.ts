@@ -119,7 +119,7 @@ export class StudentFormComponent implements OnInit {
     const action$ =
       this.isEditMode() && this.editingIsuId !== null
         ? this.studentService.updateStudent(this.editingIsuId, payload)
-        : this.studentService.createStudent(payload);
+        : this.studentService.addStudent(payload);
 
     action$
       .pipe(
