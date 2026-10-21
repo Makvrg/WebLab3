@@ -1,7 +1,7 @@
-import {Role} from "./Role";
+import {Role} from "../entity/Role";
 
 export interface UserContext {
-    userId: number | string;
+    userId: number;
     login: string;
     email: string;
     role: Role;
