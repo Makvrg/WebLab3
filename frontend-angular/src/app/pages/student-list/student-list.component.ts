@@ -1,0 +1,207 @@
+import { Component, OnInit, inject, signal, computed, DestroyRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { BehaviorSubject, combineLatest, of } from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  finalize,
+  map,
+  startWith,
+  switchMap,
+  tap,
+} from 'rxjs/operators';
+import { StudentService, ApiError } from '../../services/student.service';
+import { UserContextService } from '../../user-context/user-context.service';
+import { Student, StudentFilter } from '../../entity/Student';
+
+export type SortField = 'isuId' | 'fio' | 'stGroup' | 'dormitoryNumber' | 'room';
+export type SortDirection = 'asc' | 'desc';
+
+@Component({
+  selector: 'app-student-list',
+  standalone: true,
+  imports: [CommonModule, RouterLink, ReactiveFormsModule],
+  templateUrl: './student-list.component.html',
+  styleUrls: ['./student-list.component.css'],
+})
+export class StudentListComponent implements OnInit {
+  private readonly studentService = inject(StudentService);
+  private readonly userContext = inject(UserContextService);
+  private readonly fb = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly pageSize = 8;
+  readonly isAdmin = this.userContext.isAdmin;
+
+  readonly filterForm = this.fb.group({
+    fio: [''],
+    isuId: [''],
+    stGroup: [''],
+    dormitoryNumber: [''],
+    room: [''],
+    dateOfPlacement: [''],
+    isNotRussian: [''],
+  });
+
+  readonly showFilters = signal<boolean>(false);
+  readonly isLoading = signal<boolean>(false);
+  readonly errorMessage = signal<string | null>(null);
+  readonly successMessage = signal<string | null>(null);
+  readonly deletingId = signal<number | null>(null);
+
+  readonly currentPage = signal<number>(this.getInitialPage());
+  readonly sortField = signal<SortField>('isuId');
+  readonly sortDirection = signal<SortDirection>('asc');
+
+  private readonly rawStudents = signal<Student[]>([]);
+  private readonly page$ = new BehaviorSubject<number>(this.currentPage());
+  private readonly reload$ = new BehaviorSubject<void>(undefined);
+
+  readonly hasNextPage = computed(() => this.rawStudents().length >= this.pageSize);
+
+  readonly students = computed<Student[]>(() => {
+    const list = [...this.rawStudents()];
+    const field = this.sortField();
+    const dir = this.sortDirection() === 'asc' ? 1 : -1;
+
+    return list.sort((a, b) => {
+      const valA = a[field];
+      const valB = b[field];
+
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return (valA - valB) * dir;
+      }
+      return String(valA).localeCompare(String(valB), 'ru') * dir;
+    });
+  });
+
+  ngOnInit(): void {
+    const filters$ = this.filterForm.valueChanges.pipe(
+      startWith(this.filterForm.getRawValue()),
+      debounceTime(300),
+      map((raw) => this.normalizeFilters(raw)),
+      distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)),
+      tap(() => {
+        if (this.currentPage() !== 1) {
+          this.setPage(1);
+        }
+      })
+    );
+
+    combineLatest([filters$, this.page$.pipe(distinctUntilChanged()), this.reload$])
+      .pipe(
+        tap(() => {
+          this.isLoading.set(true);
+          this.errorMessage.set(null);
+        }),
+        switchMap(([filters, page]) =>
+          this.studentService.getStudents(filters, page, this.pageSize).pipe(
+            catchError((err: ApiError) => {
+              this.errorMessage.set(err.message);
+              return of([] as Student[]);
+            }),
+            finalize(() => this.isLoading.set(false))
+          )
+        ),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((data) => {
+        this.rawStudents.set(data);
+      });
+  }
+
+  toggleFilters(): void {
+    this.showFilters.update((v) => !v);
+  }
+
+  onResetFilters(): void {
+    this.filterForm.reset({
+      fio: '',
+      isuId: '',
+      stGroup: '',
+      dormitoryNumber: '',
+      room: '',
+      dateOfPlacement: '',
+      isNotRussian: '',
+    });
+  }
+
+  onSort(field: SortField): void {
+    if (this.sortField() === field) {
+      this.sortDirection.update((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+    } else {
+      this.sortField.set(field);
+      this.sortDirection.set('asc');
+    }
+  }
+
+  getSortIcon(field: SortField): string {
+    if (this.sortField() !== field) return '↕';
+    return this.sortDirection() === 'asc' ? '↑' : '↓';
+  }
+
+  onPageChange(newPage: number): void {
+    if (newPage < 1 || this.isLoading()) return;
+    this.setPage(newPage);
+  }
+
+  onDelete(isuId: number): void {
+    if (this.deletingId() !== null) return;
+
+    this.deletingId.set(isuId);
+    this.errorMessage.set(null);
+
+    this.studentService
+      .deleteStudent(isuId)
+      .pipe(
+        finalize(() => this.deletingId.set(null)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: () => {
+          this.flashSuccess('Студент успешно удален');
+          this.reload$.next();
+        },
+        error: (err: ApiError) => {
+          this.errorMessage.set(err.message);
+        },
+      });
+  }
+
+  private setPage(page: number): void {
+    this.currentPage.set(page);
+    localStorage.setItem('pageNumber', String(page));
+    this.page$.next(page);
+  }
+
+  private getInitialPage(): number {
+    const saved = Number(localStorage.getItem('pageNumber'));
+    return Number.isInteger(saved) && saved > 0 ? saved : 1;
+  }
+
+  private normalizeFilters(raw: any): StudentFilter {
+    return {
+      fio: raw.fio?.trim() || null,
+      isuId: raw.isuId ? Number(raw.isuId) : null,
+      stGroup: raw.stGroup?.trim() || null,
+      dormitoryNumber: raw.dormitoryNumber ? Number(raw.dormitoryNumber) : null,
+      room: raw.room ? Number(raw.room) : null,
+      dateOfPlacement: raw.dateOfPlacement || null,
+      isNotRussian:
+        raw.isNotRussian === 'true' || raw.isNotRussian === 'false' ? raw.isNotRussian : null,
+    };
+  }
+
+  private flashSuccess(msg: string): void {
+    this.successMessage.set(msg);
+    setTimeout(() => {
+      if (this.successMessage() === msg) {
+        this.successMessage.set(null);
+      }
+    }, 3000);
+  }
+}

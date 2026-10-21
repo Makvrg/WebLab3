@@ -26,72 +26,72 @@ export const routes: Routes = [
     component: RegisterComponent,
     canActivate: [guestGuard],
     title: 'Регистрация',
-    },
+  },
 
-    // 2. Начальный URL
-    {
-      path: '',
-      pathMatch: 'full',
-      redirectTo: 'students',
-    },
+  // 2. Начальный URL
+  {
+    path: '',
+    pathMatch: 'full',
+    redirectTo: 'students',
+  },
 
-    // 3. Защищённая часть приложения
-    {
-      path: '',
-      canActivate: [authGuard],
-      canActivateChild: [authGuard],
-      children: [
-        // Профиль
-        {
-          path: 'profile',
-          component: ProfileComponent,
-          title: 'Профиль',
-        },
-        // Работа со студентами
-        {
-          path: 'students',
-          children: [
-            // Список студентов
-            {
-              path: '',
-              pathMatch: 'full',
-              component: StudentListComponent,
-              title: 'Студенты',
+  // 3. Защищённая часть приложения
+  {
+    path: '',
+    canActivate: [authGuard],
+    canActivateChild: [authGuard],
+    children: [
+      // Профиль
+      {
+        path: 'profile',
+        component: ProfileComponent,
+        title: 'Профиль',
+      },
+      // Работа со студентами
+      {
+        path: 'students',
+        children: [
+          // Список студентов
+          {
+            path: '',
+            pathMatch: 'full',
+            component: StudentListComponent,
+            title: 'Студенты',
+          },
+          // Создание студента
+          {
+            path: 'create',
+            component: StudentFormComponent,
+            title: 'Создание студента',
+            canActivate: [isAdminGuard],
+            data: {
+              formMode: 'create',
             },
-            // Создание студента
-            {
-              path: 'create',
-              component: StudentFormComponent,
-              title: 'Создание студента',
-              canActivate: [isAdminGuard],
-              data: {
-                formMode: 'create',
-              },
+          },
+          // Обновление данных студента
+          {
+            path: ':id/edit',
+            component: StudentFormComponent,
+            title: 'Редактирование студента',
+            canActivate: [isAdminGuard],
+            data: {
+              formMode: 'edit',
             },
-            // Обновление данных студента
-            {
-              path: ':id/edit',
-              component: StudentFormComponent,
-              title: 'Редактирование студента',
-              canActivate: [isAdminGuard],
-              data: {
-                formMode: 'edit',
-              },
-            },
-            // Просмотр конкретного студента
-            {
-              path: ':id',
-              component: StudentDetailComponent,
-              title: 'Карточка студента',
-            },
-          ],
-        },
-      ],
-    },
+          },
+          // Просмотр конкретного студента
+          {
+            path: ':id',
+            component: StudentDetailComponent,
+            title: 'Карточка студента',
+          },
+        ],
+      },
+    ],
+  },
 
-    // 4. Неизвестные маршруты
-    {
-        path: '**',
-        redirectTo: '/students',
-    },
+  // 4. Неизвестные маршруты
+  {
+    path: '**',
+    redirectTo: '/students',
+  },
 ];
