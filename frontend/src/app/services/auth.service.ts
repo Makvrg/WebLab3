@@ -8,6 +8,7 @@ import { AUTH_URL } from './api.constants';
 import { Role } from '../entity/Role';
 import { UserContextService } from '../user-context/user-context.service';
 import { UserContext } from '../user-context/user-context.model';
+import { extractUserFromToken } from '../utils/jwt.util';
 
 export interface TokenResponse {
   accessToken: string;
@@ -87,12 +88,10 @@ export class AuthService {
     ]) {
       localStorage.removeItem(key);
     }
-    this.userContextService.clearUser()
+    this.userContextService.clearUser();
   }
 
   private saveTokensAndContext(tokens: TokenResponse): void {
-    const userIdAndLogin: { userId: number; login: string } | null =
-      this.extractUserFromToken(tokens.accessToken);
     if (
       !tokens?.accessToken ||
       !tokens?.refreshTokenId ||
@@ -100,56 +99,16 @@ export class AuthService {
     ) {
       throw new Error('Сервер вернул неполный набор токенов');
     }
-    if (userIdAndLogin === null) {
+
+    const userContext: UserContext | null = extractUserFromToken(tokens.accessToken);
+    if (userContext === null) {
       throw new Error('Сервер вернул некорректный токен');
     }
 
     localStorage.setItem('accessToken', tokens.accessToken);
-    localStorage.setItem('refreshTokenId', tokens.refreshTokenId);
+    localStorage.setItem('refreshTokenId', String(tokens.refreshTokenId));
     localStorage.setItem('refreshToken', tokens.refreshToken);
 
-    const userContext: UserContext = {
-      userId: userIdAndLogin.userId,
-      login: userIdAndLogin.login,
-      role: tokens.role
-    };
     this.userContextService.setUser(userContext);
-  }
-
-  private extractUserFromToken(
-    token: string | null = this.getAccessToken()
-  ): { userId: number; login: string } | null {
-    if (!token) {
-      return null;
-    }
-
-    try {
-      const parts = token.split('.');
-      if (parts.length !== 3) {
-        return null;
-      }
-
-      let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-      base64 = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
-
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
-      );
-
-      const payload = JSON.parse(jsonPayload);
-      if (payload?.userId === undefined || !payload?.login) {
-        return null;
-      }
-
-      return {
-        userId: Number(payload.userId),
-        login: String(payload.login)
-      };
-    } catch {
-      return null;
-    }
   }
 }
