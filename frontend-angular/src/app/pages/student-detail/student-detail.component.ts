@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, DestroyRef } from '@angular/core';
+import {Component, OnInit, inject, signal, DestroyRef, Signal, WritableSignal} from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -17,15 +17,15 @@ import { Student } from '../../entity/Student';
   styleUrls: ['./student-detail.component.css'],
 })
 export class StudentDetailComponent implements OnInit {
-  private readonly route = inject(ActivatedRoute);
-  private readonly studentService = inject(StudentService);
-  private readonly userContext = inject(UserContextService);
-  private readonly destroyRef = inject(DestroyRef);
+  private readonly route: ActivatedRoute = inject(ActivatedRoute);
+  private readonly studentService: StudentService = inject(StudentService);
+  private readonly userContext: UserContextService = inject(UserContextService);
+  private readonly destroyRef: DestroyRef = inject(DestroyRef);
 
-  readonly isAdmin = this.userContext.isAdmin;
-  readonly student = signal<Student | null>(null);
-  readonly isLoading = signal<boolean>(true);
-  readonly errorMessage = signal<string | null>(null);
+  readonly isAdmin: Signal<boolean> = this.userContext.isAdmin;
+  readonly student: WritableSignal<Student | null> = signal<Student | null>(null);
+  readonly isLoading: WritableSignal<boolean> = signal<boolean>(true);
+  readonly errorMessage: WritableSignal<string | null> = signal<string | null>(null);
 
   ngOnInit(): void {
     this.route.paramMap
