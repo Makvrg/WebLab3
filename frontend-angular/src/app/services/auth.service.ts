@@ -38,7 +38,7 @@ export class AuthService {
   }
 
   refreshTokens(): Observable<string> {
-    const refreshTokenId = localStorage.getItem('refreshTokenId');
+    const refreshTokenId = Number(localStorage.getItem('refreshTokenId'));
     const refreshToken = localStorage.getItem('refreshToken');
 
     if (!refreshTokenId || !refreshToken) {
@@ -71,7 +71,7 @@ export class AuthService {
 
   logout(): Observable<void> {
     const body = {
-      refreshTokenId: localStorage.getItem('refreshTokenId'),
+      refreshTokenId: Number(localStorage.getItem('refreshTokenId')),
       refreshToken: localStorage.getItem('refreshToken')
     };
 
