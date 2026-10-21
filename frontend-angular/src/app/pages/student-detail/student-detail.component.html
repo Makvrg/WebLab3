@@ -22,30 +22,30 @@
   <div class="spinner spinner-primary"></div>
   <span>Загрузка досье студента...</span>
 </div>
-} @else if (student(); as s) {
+} @else if (student();) {
 <div class="card profile-card" id="main-content">
-  <h2 id="profile-fio">{{ s.fio }}</h2>
-  <p><strong>ИСУ:</strong> <span id="profile-isu">{{ s.isuId }}</span></p>
-  <p><strong>Группа:</strong> <span id="profile-group">{{ s.stGroup }}</span></p>
+  <h2 id="profile-fio">{{ student().fio }}</h2>
+  <p><strong>ИСУ:</strong> <span id="profile-isu">{{ student().isuId }}</span></p>
+  <p><strong>Группа:</strong> <span id="profile-group">{{ student().stGroup }}</span></p>
 
   <hr>
 
   <p>
-    <strong>Общежитие:</strong> №<span id="profile-dorm">{{ s.dormitoryNumber }}</span>,
-    комната <span id="profile-room">{{ s.room }}</span>
+    <strong>Общежитие:</strong> №<span id="profile-dorm">{{ student().dormitoryNumber }}</span>,
+    комната <span id="profile-room">{{ student().room }}</span>
   </p>
   <p>
     <strong>Срок заселения:</strong>
-    <span id="profile-date">{{ s.dateOfPlacement | date:'dd.MM.yyyy' }}</span>
+    <span id="profile-date">{{ student().dateOfPlacement | date:'dd.MM.yyyy' }}</span>
   </p>
   <p>
     <strong>Иностранец:</strong>
-    <span id="profile-foreigner">{{ s.isNotRussian ? 'Да' : 'Нет' }}</span>
+    <span id="profile-foreigner">{{ student().isNotRussian ? 'Да' : 'Нет' }}</span>
   </p>
 
   <hr>
 
   <p><strong>Заметки:</strong></p>
-  <blockquote id="profile-notes">{{ s.notes || 'Нет заметок' }}</blockquote>
+  <blockquote id="profile-notes">{{ student().notes || 'Нет заметок' }}</blockquote>
 </div>
 }
