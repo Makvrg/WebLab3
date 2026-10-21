@@ -1,45 +1,27 @@
-import { Injectable, computed, signal } from '@angular/core';
+import {Injectable, signal, computed, Signal} from '@angular/core';
 import { UserContext } from './user-context.model';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class UserContextService {
-  private readonly _userSignal = signal<UserContext | null>(this.restoreSession());
+  private readonly _user = signal<UserContext | null>(null);
 
-  readonly user$ = this._userSignal.asReadonly();
-  readonly isAuthenticated = computed(() => this._userSignal() !== null);
-  readonly userRole = computed(() => this._userSignal()?.role ?? null);
-  readonly isAdmin = computed(() => this._userSignal()?.role === 'ADMIN');
-  readonly currentLogin = computed(() => this._userSignal()?.login ?? '');
+  readonly user: Signal<UserContext | null> = this._user.asReadonly();
 
-  get user(): UserContext | null {
-    return this._userSignal();
+  readonly isAuthenticated: Signal<boolean> = computed(() => {
+    const userContext: UserContext | null = this._user();
+
+    return !!(
+      userContext &&
+      userContext.login &&
+      userContext.role
+    );
+  });
+
+  setUser(user: UserContext | null): void {
+    this._user.set(user);
   }
 
-  set user(value: UserContext | null) {
-    this._userSignal.set(value);
-    if (value) {
-      localStorage.setItem('userContext', JSON.stringify(value));
-    } else {
-      localStorage.removeItem('userContext');
-    }
-  }
-
-  clear(): void {
-    this.user = null;
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('refreshTokenId');
-  }
-
-  private restoreSession(): UserContext | null {
-    const raw = localStorage.getItem('userContext');
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
+  clearUser(): void {
+    this._user.set(null);
   }
 }
