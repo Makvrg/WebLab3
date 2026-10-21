@@ -1,17 +1,27 @@
-import { Injectable } from '@angular/core';
+import {Injectable, signal, computed, Signal} from '@angular/core';
 import { UserContext } from './user-context.model';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class UserContextService {
-  private _user: UserContext | null = null;
+  private readonly _user = signal<UserContext | null>(null);
 
-  get user(): UserContext | null {
-    return this._user;
+  readonly user: Signal<UserContext | null> = this._user.asReadonly();
+
+  readonly isAuthenticated: Signal<boolean> = computed(() => {
+    const userContext: UserContext | null = this._user();
+
+    return !!(
+      userContext &&
+      userContext.login &&
+      userContext.role
+    );
+  });
+
+  setUser(user: UserContext | null): void {
+    this._user.set(user);
   }
 
-  set user(value: UserContext | null) {
-    this._user = value;
+  clearUser(): void {
+    this._user.set(null);
   }
 }

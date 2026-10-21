@@ -7,12 +7,9 @@ export const isAdminGuard: CanActivateFn = (snapshot, state) => {
   const userContextService: UserContextService = inject(UserContextService);
   const router: Router = inject(Router);
 
-  const userContext: UserContext | null = userContextService.user
+  const userContext: UserContext | null = userContextService.user()
 
-  if (userContext && userContext.userId &&
-    userContext.login && userContext.email &&
-    userContext.role === "ADMIN"
-  ) {
+  if (userContextService.isAuthenticated() && userContext?.role === "ADMIN") {
     return true;
   }
 

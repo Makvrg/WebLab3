@@ -7,13 +7,8 @@ export const guestGuard: CanActivateFn = (snapshot, state) => {
   const userContextService: UserContextService = inject(UserContextService);
   const router: Router = inject(Router);
 
-  const userContext: UserContext | null = userContextService.user
-
-  if (userContext && userContext.userId &&
-    userContext.login && userContext.email && userContext.role
-  ) {
+  if (userContextService.isAuthenticated()) {
     return router.createUrlTree(['/students']);
   }
-
   return true
 };
