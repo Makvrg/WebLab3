@@ -1,10 +1,11 @@
 import { Component, OnInit, inject, signal, DestroyRef } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { of } from 'rxjs';
 import { catchError, filter, finalize, map, switchMap, tap } from 'rxjs/operators';
-import { StudentService, ApiError } from '../../services/student.service';
+import { StudentService } from '../../services/student.service';
 import { UserContextService } from '../../user-context/user-context.service';
 import { Student } from '../../entity/Student';
 
@@ -29,16 +30,30 @@ export class StudentDetailComponent implements OnInit {
   ngOnInit(): void {
     this.route.paramMap
       .pipe(
-        map((params) => params.get('id')),
-        filter((id): id is string => Boolean(id && id.trim())),
+        map((params) => Number(params.get('id'))),
+        filter((id): id is number => Number.isInteger(id) && id > 0),
         tap(() => {
           this.isLoading.set(true);
           this.errorMessage.set(null);
         }),
         switchMap((id) =>
           this.studentService.getStudent(id).pipe(
-            catchError((err: ApiError) => {
-              this.errorMessage.set(err.message);
+            map((raw) => new Student(
+              Number(raw.isuId),
+              String(raw.fio ?? ''),
+              String(raw.stGroup ?? ''),
+              Number(raw.dormitoryNumber),
+              Number(raw.room),
+              String(raw.dateOfPlacement ?? ''),
+              Boolean(raw.isNotRussian),
+              raw.notes ? String(raw.notes) : ''
+            )),
+            catchError((err: HttpErrorResponse) => {
+              const msg =
+                err.status === 0
+                  ? 'Не удалось связаться с сервером.'
+                  : err.error?.error?.message || err.error?.message || 'Студент не найден.';
+              this.errorMessage.set(msg);
               return of(null);
             }),
             finalize(() => this.isLoading.set(false))

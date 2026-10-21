@@ -2,9 +2,10 @@ import { Component, OnInit, inject, signal, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs/operators';
-import { StudentService, ApiError } from '../../services/student.service';
+import { StudentService } from '../../services/student.service';
 import { Student } from '../../entity/Student';
 
 @Component({
@@ -35,7 +36,9 @@ export class StudentFormComponent implements OnInit {
         Validators.required,
         Validators.minLength(5),
         Validators.maxLength(100),
-        Validators.pattern(/^(?=.*[А-Яа-яЁёA-Za-z])[А-Яа-яЁёA-Za-z0-9]+(?: [А-Яа-яЁёA-Za-z0-9]+)*$/),
+        Validators.pattern(
+          /^(?=.*[А-Яа-яЁёA-Za-z])[А-Яа-яЁёA-Za-z0-9]+(?: [А-Яа-яЁёA-Za-z0-9]+)*$/
+        ),
       ],
     ],
     stGroup: ['', [Validators.required, Validators.pattern(/^[A-Z][34][1-4]\d{2}$/)]],
@@ -60,13 +63,16 @@ export class StudentFormComponent implements OnInit {
     const idParam = this.route.snapshot.paramMap.get('id');
 
     if (idParam) {
-      this.isEditMode.set(true);
-      this.editingIsuId = Number(idParam);
-      this.loadStudent(idParam);
+      const numericId = Number(idParam);
+      if (Number.isInteger(numericId) && numericId > 0) {
+        this.isEditMode.set(true);
+        this.editingIsuId = numericId;
+        this.loadStudent(numericId);
+      }
     }
   }
 
-  private loadStudent(id: string): void {
+  private loadStudent(id: number): void {
     this.isLoadingData.set(true);
     this.errorMessage.set(null);
 
@@ -89,8 +95,12 @@ export class StudentFormComponent implements OnInit {
             notes: student.notes ?? '',
           });
         },
-        error: (err: ApiError) => {
-          this.errorMessage.set(err.message);
+        error: (err: HttpErrorResponse) => {
+          const msg =
+            err.status === 0
+              ? 'Не удалось связаться с сервером.'
+              : err.error?.error?.message || err.error?.message || 'Не удалось загрузить данные студента.';
+          this.errorMessage.set(msg);
         },
       });
   }
@@ -130,8 +140,12 @@ export class StudentFormComponent implements OnInit {
         next: () => {
           this.router.navigate(['/students']);
         },
-        error: (err: ApiError) => {
-          this.errorMessage.set(err.message);
+        error: (err: HttpErrorResponse) => {
+          const msg =
+            err.status === 0
+              ? 'Не удалось связаться с сервером.'
+              : err.error?.error?.message || err.error?.message || 'Ошибка сохранения данных.';
+          this.errorMessage.set(msg);
         },
       });
   }

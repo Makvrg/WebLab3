@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { STUDENTS_URL } from './api.constants';
 import {Student} from '../entity/Student';
 
-export interface StudentFilters {
+export interface StudentFilter {
   isuId?: string | number;
   fio?: string;
   stGroup?: string;
@@ -19,10 +19,10 @@ export class StudentService {
   private http = inject(HttpClient);
   private readonly pageSize = 8;
 
-  getStudents (filters: StudentFilters = {},
+  getStudents (filters: StudentFilter = {},
                pageNumber: number = 1): Observable<Student[]> {
     let params: HttpParams = new HttpParams()
-    const allowedFilters: (keyof StudentFilters)[] = [
+    const allowedFilters: (keyof StudentFilter)[] = [
       'isuId', 'fio', 'stGroup', 'dormitoryNumber',
       'room', 'dateOfPlacement', 'isNotRussian'
     ];
