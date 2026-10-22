@@ -19,9 +19,16 @@ export class StudentService {
   private http = inject(HttpClient);
   private readonly pageSize = 8;
 
-  getStudents (filters: StudentFilter = {},
-               pageNumber: number = 1): Observable<Student[]> {
-    let params: HttpParams = new HttpParams()
+  getStudents(filters: StudentFilter = {},
+              pageNumber: number = 1): Observable<Student[]> {
+    const query: Partial<StudentFilter> & {
+      pageSize: number;
+      pageNumber: number;
+    } = {
+      pageSize: this.pageSize,
+      pageNumber
+    };
+
     const allowedFilters: (keyof StudentFilter)[] = [
       'isuId', 'fio', 'stGroup', 'dormitoryNumber',
       'room', 'dateOfPlacement', 'isNotRussian'
@@ -31,16 +38,19 @@ export class StudentService {
       const value = filters[key];
 
       if (value !== undefined && value !== null && value !== '') {
-        params = params.set(key, String(value));
+        Object.assign(query, { [key]: value });
       }
     }
-    params = params.set('pageSize', this.pageSize)
-                   .set('pageNumber', pageNumber);
 
-    return this.http.get<Student[]>(STUDENTS_URL, { params });
+    return this.http.request<Student[]>(
+      'QUERY',
+      STUDENTS_URL,
+      { body: query }
+    );
   }
 
-  getStudent (id: number): Observable<Student> {
+
+  getStudent(id: number): Observable<Student> {
     return this.http.get<Student>(
       `${STUDENTS_URL}/${encodeURIComponent(id)}`
     );

@@ -483,10 +483,6 @@ components:
           type: string
           description: Refresh token.
           example: 8f1c2d0e...
-        role:
-          type: string
-          description: Роль пользователя.
-          example: USER
 
     LogoutRequestDto:
       type: object

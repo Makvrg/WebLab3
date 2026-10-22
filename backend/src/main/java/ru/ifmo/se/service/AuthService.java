@@ -187,8 +187,7 @@ public class AuthService {
         return new AuthResponseDto(
                 accessToken,
                 refreshTokenEntity.getRefreshTokenId(),
-                rawRefreshToken,
-                user.getRole().name()
+                rawRefreshToken
         );
     }
 }

@@ -5,7 +5,6 @@ import {
   map, shareReplay, tap, throwError
 } from 'rxjs';
 import { AUTH_URL } from './api.constants';
-import { Role } from '../entity/Role';
 import { UserContextService } from '../user-context/user-context.service';
 import { UserContext } from '../user-context/user-context.model';
 import { extractUserFromToken } from '../utils/jwt.util';
@@ -14,7 +13,6 @@ export interface TokenResponse {
   accessToken: string;
   refreshTokenId: string;
   refreshToken: string;
-  role: Role;
 }
 
 @Injectable({ providedIn: 'root' })

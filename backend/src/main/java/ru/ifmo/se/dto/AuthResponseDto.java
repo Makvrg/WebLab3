@@ -14,5 +14,4 @@ public class AuthResponseDto {
     private String accessToken;
     private Integer refreshTokenId;
     private String refreshToken;
-    private String role;
 }

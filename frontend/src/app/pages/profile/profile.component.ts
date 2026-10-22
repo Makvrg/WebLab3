@@ -1,7 +1,8 @@
 import { Component, DestroyRef, OnInit, WritableSignal, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { finalize } from 'rxjs';
+import { finalize, of, timer } from 'rxjs';
+import { catchError, exhaustMap, map, tap, } from 'rxjs/operators';
 
 import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
@@ -51,27 +52,44 @@ export class ProfileComponent implements OnInit {
       return;
     }
 
-    this.userService
-      .getUser(context.userId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (profile: UserProfile) => {
-          this.user.set({
-            userId: context.userId,
-            login: profile.login || context.login,
-            email: profile.email,
-            role: profile.role ?? context.role,
-          });
-        },
-        error: (err: unknown) => {
-          this.errorMessage.set(
-            this.getErrorMessage(
-              err,
-              'Не удалось загрузить профиль пользователя.'
-            )
+    timer(0, 5000)
+      .pipe(
+        exhaustMap((tick) => {
+          const isPolling: boolean = tick > 0;
+
+          return this.userService.getUser(context.userId).pipe(
+            map((profile: UserProfile): ProfileView => ({
+              userId: context.userId,
+              login: profile.login || context.login,
+              email: profile.email,
+              role: profile.role ?? context.role,
+            })),
+
+            catchError((err: unknown) => {
+              if (!isPolling) {
+                this.errorMessage.set(
+                  this.getErrorMessage(
+                    err,
+                    'Не удалось загрузить профиль пользователя.'
+                  )
+                );
+              }
+
+              return of(null);
+            }),
+
+            tap((profile) => {
+              if (profile !== null) {
+                this.user.set(profile);
+                this.errorMessage.set(null);
+              }
+            })
           );
-        },
-      });
+        }),
+
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 
   onLogout(): void {

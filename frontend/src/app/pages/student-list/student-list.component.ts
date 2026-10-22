@@ -4,17 +4,9 @@ import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {BehaviorSubject, combineLatest, Observable, of} from 'rxjs';
-import {
-  catchError,
-  debounceTime,
-  distinctUntilChanged,
-  finalize,
-  map,
-  startWith,
-  switchMap,
-  tap,
-} from 'rxjs/operators';
+import { BehaviorSubject, combineLatest, Observable, of, timer, } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged,
+         finalize, map, startWith, switchMap, tap, exhaustMap,} from 'rxjs/operators';
 import { StudentService, StudentFilter } from '../../services/student.service';
 import { UserContextService } from '../../user-context/user-context.service';
 import { Student } from '../../entity/Student';
@@ -84,55 +76,102 @@ export class StudentListComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const filters$: Observable<StudentFilter> = this.filterForm.valueChanges.pipe(
-      startWith(this.filterForm.getRawValue()),
-      debounceTime(300),
-      map((raw) => this.normalizeFilters(raw)),
-      distinctUntilChanged(
-        (prev: StudentFilter, curr: StudentFilter) =>
-          JSON.stringify(prev) === JSON.stringify(curr)
-      ),
-      tap(() => {
-        if (this.currentPage() !== 1) {
-          this.setPage(1);
-        }
-      })
-    );
-
-    combineLatest([filters$, this.page$.pipe(distinctUntilChanged()), this.reload$])
-      .pipe(
+    const filters$: Observable<StudentFilter> =
+      this.filterForm.valueChanges.pipe(
+        startWith(this.filterForm.getRawValue()),
+        debounceTime(300),
+        map((raw) => this.normalizeFilters(raw)),
+        distinctUntilChanged(
+          (prev: StudentFilter, curr: StudentFilter) =>
+            JSON.stringify(prev) === JSON.stringify(curr)
+        ),
         tap(() => {
-          this.isLoading.set(true);
-          this.errorMessage.set(null);
-        }),
+          if (this.currentPage() !== 1) {
+            this.setPage(1);
+          }
+        })
+      );
+
+    combineLatest([
+      filters$,
+      this.page$.pipe(distinctUntilChanged()),
+      this.reload$,
+    ])
+      .pipe(
         switchMap(([filters, page]) =>
-          this.studentService.getStudents(filters, page).pipe(
-            map((items) => (items ?? []).map((raw) => new Student(
-              Number(raw.isuId),
-              String(raw.fio ?? ''),
-              String(raw.stGroup ?? ''),
-              Number(raw.dormitoryNumber),
-              Number(raw.room),
-              String(raw.dateOfPlacement ?? ''),
-              Boolean(raw.isNotRussian),
-              raw.notes ? String(raw.notes) : ''
-            ))),
-            catchError((err: HttpErrorResponse) => {
-              const msg =
-                err.status === 0
-                  ? 'Не удалось связаться с сервером.'
-                  : err.error?.error?.message || err.error?.message || 'Не удалось загрузить список студентов.';
-              this.errorMessage.set(msg);
-              return of([] as Student[]);
-            }),
-            finalize(() => this.isLoading.set(false))
+          timer(0, 5000).pipe(
+            exhaustMap((tick) => {
+              const isPolling: boolean = tick > 0;
+
+              if (!isPolling) {
+                this.isLoading.set(true);
+                this.errorMessage.set(null);
+              }
+
+              return this.studentService
+                .getStudents(filters, page)
+                .pipe(
+                  map((items) =>
+                    (items ?? []).map(
+                      (raw) =>
+                        new Student(
+                          Number(raw.isuId),
+                          String(raw.fio ?? ''),
+                          String(raw.stGroup ?? ''),
+                          Number(raw.dormitoryNumber),
+                          Number(raw.room),
+                          String(raw.dateOfPlacement ?? ''),
+                          Boolean(raw.isNotRussian),
+                          raw.notes ? String(raw.notes) : ''
+                        )
+                    )
+                  ),
+
+                  catchError(
+                    (
+                      err: HttpErrorResponse
+                    ): Observable<Student[] | null> => {
+                      if (isPolling) {
+                        return of(null);
+                      }
+
+                      const msg =
+                        err.status === 0
+                          ? 'Не удалось связаться с сервером.'
+                          : err.error?.error?.message ||
+                          err.error?.message ||
+                          'Не удалось загрузить список студентов.';
+
+                      this.errorMessage.set(msg);
+                      return of([]);
+                    }
+                  ),
+
+                  tap((data: Student[] | null) => {
+                    if (data === null) {
+                      return;
+                    }
+
+                    this.rawStudents.set(data);
+
+
+                    if (isPolling) {
+                      this.errorMessage.set(null);
+                    }
+                  }),
+
+                  finalize(() => {
+                    if (!isPolling) {
+                      this.isLoading.set(false);
+                    }
+                  })
+                );
+            })
           )
         ),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe((data) => {
-        this.rawStudents.set(data);
-      });
+      .subscribe();
   }
 
   toggleFilters(): void {

@@ -3,6 +3,10 @@ FROM eclipse-temurin:21-jre
 # Копируем локальный TomEE 11.0.0-M1 WebProfile
 COPY tomee /usr/local/tomee
 
+# Исправляем окончания строк Windows (CRLF -> LF)
+RUN find /usr/local/tomee -type f -name "*.sh" \
+    -exec sed -i 's/\r$//' {} +
+
 # Выдаем права на исполнение shell-скриптов TomEE
 RUN chmod +x /usr/local/tomee/bin/*.sh
 
