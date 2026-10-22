@@ -74,40 +74,7 @@ public class StudentService {
 
     @Transactional
     public List<StudentDto> getStudents(StudentFilterDto filters) {
-        // TODO Валидация данных пагинации
-        List<Student> students = repo.getStudents(
-                (filters.getPageNumber() - 1) * filters.getPageSize(),
-                filters.getPageSize() * filters.getPageNumber()
-        );
-
-        if (filters == null) {
-            return students.stream()
-                    .map(this::toDto)
-                    .collect(Collectors.toList());
-        }
-
-        return students.stream()
-                // Поиск по ИСУ
-                .filter(s -> filters.getIsuId() == null
-                        || s.getIsuId().equals(filters.getIsuId()))
-                // Поиск по ФИО
-                .filter(s -> filters.getFio() == null || filters.getFio().isBlank()
-                        || s.getFio().toLowerCase().contains(filters.getFio().toLowerCase()))
-                // Фильтр по группе
-                .filter(s -> filters.getStGroup() == null || filters.getStGroup().isBlank()
-                        || s.getGroup().equals(filters.getStGroup()))
-                // Фильтр по номеру общежития
-                .filter(s -> filters.getDormitoryNumber() == null
-                        || s.getDormitoryNumber().equals(filters.getDormitoryNumber()))
-                // Фильтр по номеру комнаты
-                .filter(s -> filters.getRoom() == null
-                        || s.getRoom().equals(filters.getRoom()))
-                // Фильтр по дате заселения (формат "YYYY-MM-DD")
-                .filter(s -> filters.getDateOfPlacement() == null || filters.getDateOfPlacement().isBlank()
-                        || s.getDateOfPlacement().toString().equals(filters.getDateOfPlacement()))
-                // Фильтр по статусу иностранца
-                .filter(s -> filters.getIsNotRussian() == null
-                        || s.getIsNotRussian().equals(filters.getIsNotRussian()))
+        return repo.getStudents(filters).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
