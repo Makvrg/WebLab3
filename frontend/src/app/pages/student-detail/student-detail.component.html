@@ -22,7 +22,7 @@
   <div class="spinner spinner-primary"></div>
   <span>Загрузка досье студента...</span>
 </div>
-} @else if (student();) {
+} @else if (student()) {
 <div class="card profile-card" id="main-content">
   <h2 id="profile-fio">{{ student()?.fio }}</h2>
   <p><strong>ИСУ:</strong> <span id="profile-isu">{{ student()?.isuId }}</span></p>
