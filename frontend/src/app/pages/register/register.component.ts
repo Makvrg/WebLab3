@@ -143,34 +143,37 @@ export class RegisterComponent {
       });
   }
 
+
   private getErrorMessage(error: unknown, fallback: string): string {
     if (typeof error !== 'object' || error === null) {
       return fallback;
     }
 
     const err = error as {
-      message?: unknown;
       error?: unknown;
     };
 
+    if (typeof err.error !== 'object' || err.error === null) {
+      return fallback;
+    }
+
+    const response = err.error as {
+      error?: unknown;
+    };
+
+    if (typeof response.error !== 'object' || response.error === null) {
+      return fallback;
+    }
+
+    const apiError = response.error as {
+      message?: unknown;
+    };
+
     if (
-      typeof err.error === 'object' &&
-      err.error !== null &&
-      'message' in err.error
+      typeof apiError.message === 'string' &&
+      apiError.message.trim()
     ) {
-      const message = (err.error as { message?: unknown }).message;
-
-      if (typeof message === 'string' && message.trim()) {
-        return message;
-      }
-    }
-
-    if (typeof err.error === 'string' && err.error.trim()) {
-      return err.error;
-    }
-
-    if (typeof err.message === 'string' && err.message.trim()) {
-      return err.message;
+      return apiError.message;
     }
 
     return fallback;
