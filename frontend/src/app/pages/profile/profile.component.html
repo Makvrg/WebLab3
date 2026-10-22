@@ -20,12 +20,12 @@
             </span>
   </h2>
 
-  <p><strong>ID пользователя:</strong> <span>{{ currentUser.userId || '—' }}</span></p>
-  <p><strong>Логин:</strong> <span>{{ currentUser.login }}</span></p>
+  <p><strong>ID пользователя:</strong>&nbsp;<span>{{ currentUser.userId || '—' }}</span></p>
+  <p><strong>Логин:</strong>&nbsp;<span>{{ currentUser.login }}</span></p>
   @if (currentUser.email) {
-  <p><strong>Электронная почта:</strong> <span>{{ currentUser.email }}</span></p>
+  <p><strong>Электронная почта:</strong>&nbsp;<span>{{ currentUser.email }}</span></p>
   }
-  <p><strong>Роль в системе:</strong> <span>{{ currentUser.role }}</span></p>
+  <p><strong>Роль в системе:</strong>&nbsp;<span>{{ currentUser.role }}</span></p>
 
   <hr>
 
