@@ -42,6 +42,14 @@ export class StudentService {
       }
     }
 
+    if (!filters.isuId && !filters.fio && !filters.stGroup &&
+        !filters.dormitoryNumber && !filters.dateOfPlacement && !filters.isNotRussian &&
+        !filters.room) {
+      let params: HttpParams = new HttpParams()
+      params = params.set('pageSize', this.pageSize)
+        .set('pageNumber', pageNumber);
+      return this.http.get<Student[]>(STUDENTS_URL, { params });
+    }
     return this.http.request<Student[]>(
       'QUERY',
       STUDENTS_URL,
