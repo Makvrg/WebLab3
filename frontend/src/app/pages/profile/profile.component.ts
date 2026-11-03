@@ -1,0 +1,152 @@
+import { Component, DestroyRef, OnInit, WritableSignal, inject, signal } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize, of, timer } from 'rxjs';
+import { catchError, exhaustMap, map, tap, } from 'rxjs/operators';
+
+import { AuthService } from '../../services/auth.service';
+import { UserService } from '../../services/user.service';
+import { UserContextService } from '../../user-context/user-context.service';
+import { UserContext } from '../../user-context/user-context.model';
+import { UserProfile } from '../../entity/UserProfile';
+import { Role } from '../../entity/Role';
+
+interface ProfileView {
+  userId: number;
+  login: string;
+  email: string;
+  role: Role;
+}
+
+@Component({
+  selector: 'app-profile',
+  standalone: true,
+  imports: [RouterLink],
+  templateUrl: './profile.component.html',
+  styleUrls: ['./profile.component.css'],
+})
+export class ProfileComponent implements OnInit {
+  private readonly userContextService: UserContextService = inject(UserContextService);
+  private readonly userService: UserService = inject(UserService);
+  private readonly authService: AuthService = inject(AuthService);
+  private readonly router: Router = inject(Router);
+  private readonly destroyRef: DestroyRef = inject(DestroyRef);
+
+  readonly user: WritableSignal<ProfileView | null> = signal<ProfileView | null>(null);
+  readonly errorMessage: WritableSignal<string | null> = signal<string | null>(null);
+  readonly isLoggingOut: WritableSignal<boolean> = signal<boolean>(false);
+
+  ngOnInit(): void {
+    this.loadProfile();
+  }
+
+  private loadProfile(): void {
+    this.errorMessage.set(null);
+
+    const context: UserContext | null = this.userContextService.user();
+
+    if (!context) {
+      this.errorMessage.set(
+        'Не удалось получить данные авторизованного пользователя. Попробуйте войти снова.'
+      );
+      return;
+    }
+
+    timer(0, 5000)
+      .pipe(
+        exhaustMap((tick) => {
+          const isPolling: boolean = tick > 0;
+
+          return this.userService.getUser(context.userId).pipe(
+            map((profile: UserProfile): ProfileView => ({
+              userId: context.userId,
+              login: profile.login || context.login,
+              email: profile.email,
+              role: profile.role ?? context.role,
+            })),
+
+            catchError((err: unknown) => {
+              if (!isPolling) {
+                this.errorMessage.set(
+                  this.getErrorMessage(
+                    err,
+                    'Не удалось загрузить профиль пользователя.'
+                  )
+                );
+              }
+
+              return of(null);
+            }),
+
+            tap((profile) => {
+              if (profile !== null) {
+                this.user.set(profile);
+                this.errorMessage.set(null);
+              }
+            })
+          );
+        }),
+
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  onLogout(): void {
+    if (this.isLoggingOut()) {
+      return;
+    }
+
+    this.isLoggingOut.set(true);
+    this.errorMessage.set(null);
+
+    this.authService
+      .logout()
+      .pipe(
+        finalize(() => {
+          this.isLoggingOut.set(false);
+          this.router.navigate(['/login']);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        error: () => {},
+      });
+  }
+
+
+  private getErrorMessage(error: unknown, fallback: string): string {
+    if (typeof error !== 'object' || error === null) {
+      return fallback;
+    }
+
+    const err = error as {
+      error?: unknown;
+    };
+
+    if (typeof err.error !== 'object' || err.error === null) {
+      return fallback;
+    }
+
+    const response = err.error as {
+      error?: unknown;
+    };
+
+    if (typeof response.error !== 'object' || response.error === null) {
+      return fallback;
+    }
+
+    const apiError = response.error as {
+      message?: unknown;
+    };
+
+    if (
+      typeof apiError.message === 'string' &&
+      apiError.message.trim()
+    ) {
+      return apiError.message;
+    }
+
+    return fallback;
+  }
+}

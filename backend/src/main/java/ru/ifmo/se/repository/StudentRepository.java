@@ -4,10 +4,14 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.jooq.Condition;
 import org.jooq.DSLContext;
 import ru.ifmo.se.app_db.jooq.tables.records.StudentRecord;
+import ru.ifmo.se.dto.StudentFilterDto;
 import ru.ifmo.se.entity.Student;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,7 +40,7 @@ public class StudentRepository {
     public Optional<Student> getStudentByIsuId(Integer isuId) {
         return dslContext.selectFrom(STUDENT)
                 .where(STUDENT.IS_DELETED.isFalse(),
-                       STUDENT.ISU_ID.eq(isuId))
+                        STUDENT.ISU_ID.eq(isuId))
                 .fetchOptional()
                 .map(this::parseDomainStudent);
     }
@@ -49,14 +53,49 @@ public class StudentRepository {
         );
     }
 
-    public List<Student> getStudents(int start, int end) {
-        int limit = end - start;
+    public List<Student> getStudents(StudentFilterDto filters) {
+        Condition condition = STUDENT.IS_DELETED.isFalse();
+
+        if (filters != null) {
+            if (filters.getIsuId() != null) {
+                condition = condition.and(STUDENT.ISU_ID.eq(filters.getIsuId()));
+            }
+            if (filters.getFio() != null && !filters.getFio().isBlank()) {
+                condition = condition.and(STUDENT.FIO.containsIgnoreCase(filters.getFio().trim()));
+            }
+            if (filters.getStGroup() != null && !filters.getStGroup().isBlank()) {
+                condition = condition.and(STUDENT.GROUP.eq(filters.getStGroup().trim()));
+            }
+            if (filters.getDormitoryNumber() != null) {
+                condition = condition.and(STUDENT.DORMITORY_NUMBER.eq(filters.getDormitoryNumber()));
+            }
+            if (filters.getRoom() != null) {
+                condition = condition.and(STUDENT.ROOM.eq(filters.getRoom()));
+            }
+            if (filters.getDateOfPlacement() != null && !filters.getDateOfPlacement().isBlank()) {
+                try {
+                    LocalDate placementDate = LocalDate.parse(filters.getDateOfPlacement().trim());
+                    condition = condition.and(STUDENT.DATE_OF_PLACEMENT.eq(placementDate));
+                } catch (DateTimeParseException ignored) {
+                }
+            }
+            if (filters.getIsNotRussian() != null) {
+                condition = condition.and(STUDENT.IS_NOT_RUSSIAN.eq(filters.getIsNotRussian()));
+            }
+        }
+
+        int pageNumber = (filters != null && filters.getPageNumber() != null && filters.getPageNumber() > 0)
+                ? filters.getPageNumber() : 1;
+        int pageSize = (filters != null && filters.getPageSize() != null && filters.getPageSize() > 0)
+                ? filters.getPageSize() : 8;
+        int offset = (pageNumber - 1) * pageSize;
+
         return dslContext
                 .selectFrom(STUDENT)
-                .where(STUDENT.IS_DELETED.isFalse())
+                .where(condition)
                 .orderBy(STUDENT.STUDENT_ID)
-                .limit(limit)
-                .offset(start)
+                .limit(pageSize)
+                .offset(offset)
                 .fetch()
                 .map(this::parseDomainStudent);
     }
@@ -85,7 +124,7 @@ public class StudentRepository {
                 .set(STUDENT.IS_NOT_RUSSIAN, student.getIsNotRussian())
                 .set(STUDENT.NOTES, student.getNotes())
                 .where(STUDENT.ISU_ID.eq(isuId),
-                       STUDENT.IS_DELETED.isFalse())
+                        STUDENT.IS_DELETED.isFalse())
                 .execute();
         return affectedRows > 0;
     }
@@ -94,7 +133,7 @@ public class StudentRepository {
         int affectedRows = dslContext.update(STUDENT)
                 .set(STUDENT.IS_DELETED, true)
                 .where(STUDENT.ISU_ID.eq(isuId),
-                       STUDENT.IS_DELETED.isFalse())
+                        STUDENT.IS_DELETED.isFalse())
                 .execute();
         return affectedRows > 0;
     }

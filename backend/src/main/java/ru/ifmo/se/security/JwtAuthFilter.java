@@ -14,6 +14,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.ext.Provider;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import ru.ifmo.se.entity.Role;
 import ru.ifmo.se.exceptions.ForbiddenException;
 import ru.ifmo.se.exceptions.UnauthorizedException;
 
@@ -76,7 +77,11 @@ public class JwtAuthFilter implements ContainerRequestFilter {
         requestContext.setSecurityContext(new SecurityContext() {
             @Override
             public Principal getUserPrincipal() {
-                return payload::getLogin;
+                return new UserPrincipal(
+                        payload.getUserId(),
+                        payload.getLogin(),
+                        Role.valueOf(payload.getRole())
+                );
             }
 
             @Override

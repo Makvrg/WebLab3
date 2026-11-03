@@ -1,0 +1,113 @@
+<div class="container auth-container">
+  <div class="auth-header">
+    <h2 id="auth-title">Регистрация нового пользователя</h2>
+  </div>
+
+  <div class="auth-tabs" role="tablist">
+    <a routerLink="/login"
+       routerLinkActive="active"
+       class="tab-btn"
+       id="tab-login-btn"
+       role="tab"
+       aria-selected="false">
+      Вход
+    </a>
+    <a routerLink="/register"
+       routerLinkActive="active"
+       class="tab-btn"
+       id="tab-register-btn"
+       role="tab"
+       aria-selected="true">
+      Регистрация
+    </a>
+  </div>
+
+  @if (errorMessage()) {
+  <div id="auth-alert" class="alert-box alert-danger" role="alert">
+    {{ errorMessage() }}
+  </div>
+  }
+
+  @if (successMessage()) {
+  <div class="alert-box alert-success" role="status">
+    {{ successMessage() }}
+  </div>
+  }
+
+  <form id="register-form"
+        class="card auth-card"
+        [formGroup]="registerForm"
+        (ngSubmit)="onSubmit()">
+
+    <div class="form-group">
+      <label for="reg-login">Имя пользователя (логин) <span class="req-star">*</span></label>
+      <input type="text"
+             id="reg-login"
+             formControlName="login"
+             placeholder="Например: ivan_ivanov"
+             autocomplete="username">
+      <small class="field-hint">Латинские буквы, цифры и символы _ - . (от 3 до 50 знаков)</small>
+      @if (registerForm.get('login')?.touched && registerForm.get('login')?.invalid) {
+      <small class="field-error">Введите корректный логин (3–50 символов: A-Z, a-z, 0-9, _ - .)</small>
+      }
+    </div>
+
+    <div class="form-group">
+      <label for="reg-email">Электронная почта <span class="req-star">*</span></label>
+      <input type="email"
+             id="reg-email"
+             formControlName="email"
+             placeholder="user@example.com"
+             autocomplete="email">
+      @if (registerForm.get('email')?.touched && registerForm.get('email')?.invalid) {
+      <small class="field-error">Введите корректный адрес электронной почты.</small>
+      }
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="reg-password">Пароль <span class="req-star">*</span></label>
+        <input type="password"
+               id="reg-password"
+               formControlName="password"
+               placeholder="Не менее 8 символов"
+               autocomplete="new-password">
+        @if (registerForm.get('password')?.touched && registerForm.get('password')?.invalid) {
+        <small class="field-error">Минимум 8 символов.</small>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="reg-password-confirm">Подтверждение <span class="req-star">*</span></label>
+        <input type="password"
+               id="reg-password-confirm"
+               formControlName="confirmPassword"
+               placeholder="Повторите пароль"
+               autocomplete="new-password">
+        @if (registerForm.get('confirmPassword')?.touched && registerForm.hasError('passwordMismatch')) {
+        <small class="field-error">Пароли не совпадают.</small>
+        }
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="reg-role">Роль в системе <span class="req-star">*</span></label>
+      <select id="reg-role" formControlName="role">
+        <option value="USER">USER (Просмотр списка студентов)</option>
+        <option value="ADMIN">ADMIN (Полный доступ к изменению и удалению)</option>
+      </select>
+    </div>
+
+    <button type="submit"
+            class="btn btn-primary btn-block"
+            id="reg-submit-btn"
+            [disabled]="registerForm.invalid || isSubmitting()">
+      @if (isSubmitting()) {
+      <span class="spinner"></span>
+      <span>Регистрация...</span>
+      } @else {
+      <span>Зарегистрироваться</span>
+      }
+    </button>
+  </form>
+</div>

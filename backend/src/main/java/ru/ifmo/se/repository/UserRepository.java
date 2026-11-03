@@ -77,24 +77,24 @@ public class UserRepository {
                 .execute();
     }
 
-    public boolean updateUserByLogin(String login, User user) {
-        int affectedRows = dslContext.update(USER)
-                .set(USER.EMAIL, user.getEmail())
-                .set(USER.ROLE, user.getRole().name())
-                .set(USER.HASHED_PASSWORD, user.getHashedPassword())
-                .set(USER.SALT, user.getSalt())
-                .where(USER.LOGIN.eq(login),
-                       USER.IS_DELETED.eq(false))
-                .execute();
-        return affectedRows > 0;
-    }
+//    public boolean updateUserByLogin(String login, User user) {
+//        int affectedRows = dslContext.update(USER)
+//                .set(USER.EMAIL, user.getEmail())
+//                .set(USER.ROLE, user.getRole().name())
+//                .set(USER.HASHED_PASSWORD, user.getHashedPassword())
+//                .set(USER.SALT, user.getSalt())
+//                .where(USER.LOGIN.eq(login),
+//                       USER.IS_DELETED.eq(false))
+//                .execute();
+//        return affectedRows > 0;
+//    }
 
-    public boolean deleteUserByLogin(String login) {
-        int affectedRows = dslContext.update(USER)
-                .set(USER.IS_DELETED, true)
-                .where(USER.LOGIN.eq(login),
-                       USER.IS_DELETED.eq(false))
-                .execute();
-        return affectedRows > 0;
-    }
+//    public boolean deleteUserByLogin(String login) {
+//        int affectedRows = dslContext.update(USER)
+//                .set(USER.IS_DELETED, true)
+//                .where(USER.LOGIN.eq(login),
+//                       USER.IS_DELETED.eq(false))
+//                .execute();
+//        return affectedRows > 0;
+//    }
 }

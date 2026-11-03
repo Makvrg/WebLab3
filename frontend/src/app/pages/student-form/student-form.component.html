@@ -1,0 +1,146 @@
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+  <h2 id="form-title">
+    {{ isEditMode() ? 'Редактирование студента' : 'Добавление студента' }}
+  </h2>
+  <a routerLink="/students" class="btn">Назад к списку</a>
+</div>
+
+@if (errorMessage()) {
+<div id="form-error" class="alert-box alert-danger" role="alert">
+  {{ errorMessage() }}
+</div>
+}
+
+@if (isLoadingData()) {
+<div class="card loading-container">
+  <div class="spinner spinner-primary"></div>
+  <span>Загрузка данных студента...</span>
+</div>
+} @else {
+<form id="student-form"
+      class="card"
+      [formGroup]="studentForm"
+      (ngSubmit)="onSubmit()">
+
+  <div class="form-group">
+    <label for="fio">ФИО студента <span class="req-star">*</span></label>
+    <input type="text"
+           id="fio"
+           formControlName="fio"
+           placeholder="Иванов Иван Иванович">
+    @if (studentForm.get('fio')?.touched && studentForm.get('fio')?.invalid) {
+    <small class="field-error">
+      ФИО должно содержать от 5 до 100 символов (только буквы, цифры и одиночные пробелы).
+    </small>
+    }
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label for="group">Группа <span class="req-star">*</span></label>
+      <input type="text"
+             id="group"
+             formControlName="stGroup"
+             placeholder="Например: P3224">
+      @if (studentForm.get('stGroup')?.touched && studentForm.get('stGroup')?.invalid) {
+      <small class="field-error">
+        Формат группы: заглавная латинская буква, курс (3/4), цифра (1-4) и 2 цифры (например, P3224).
+      </small>
+      }
+    </div>
+
+    <div class="form-group">
+      <label for="isu">ИСУ <span class="req-star">*</span></label>
+      <input type="number"
+             id="isu"
+             formControlName="isuId"
+             [readonly]="isEditMode()"
+             placeholder="123456">
+      @if (studentForm.get('isuId')?.touched && studentForm.get('isuId')?.invalid) {
+      <small class="field-error">
+        Номер ИСУ должен состоять ровно из 6 цифр (от 100000 до 999999).
+      </small>
+      }
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label for="dorm">Номер общежития <span class="req-star">*</span></label>
+      <input type="number"
+             id="dorm"
+             formControlName="dormitoryNumber"
+             min="1"
+             max="4"
+             placeholder="Например: 4">
+      @if (studentForm.get('dormitoryNumber')?.touched && studentForm.get('dormitoryNumber')?.invalid) {
+      <small class="field-error">
+        Номер общежития должен быть от 1 до 4.
+      </small>
+      }
+    </div>
+
+    <div class="form-group">
+      <label for="room">Комната <span class="req-star">*</span></label>
+      <input type="number"
+             id="room"
+             formControlName="room"
+             min="100"
+             max="2000"
+             placeholder="Например: 813">
+      @if (studentForm.get('room')?.touched && studentForm.get('room')?.invalid) {
+      <small class="field-error">
+        Номер комнаты должен быть в диапазоне от 100 до 2000.
+      </small>
+      }
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="date">Срок заселения <span class="req-star">*</span></label>
+    <input type="date"
+           id="date"
+           formControlName="dateOfPlacement"
+           min="1000-01-01"
+           max="9999-12-31">
+    @if (studentForm.get('dateOfPlacement')?.touched && studentForm.get('dateOfPlacement')?.invalid) {
+    <small class="field-error">
+      Укажите корректную дату заселения.
+    </small>
+    }
+  </div>
+
+  <div class="form-group checkbox-group">
+    <input type="checkbox"
+           id="foreigner"
+           formControlName="isNotRussian">
+    <label for="foreigner">Является иностранцем</label>
+  </div>
+
+  <div class="form-group">
+    <label for="notes">Заметки</label>
+    <textarea id="notes"
+              rows="4"
+              formControlName="notes"
+              maxlength="1000"
+              placeholder="Введите дополнительные заметки..."></textarea>
+    @if (studentForm.get('notes')?.touched && studentForm.get('notes')?.invalid) {
+    <small class="field-error">
+      Максимальная длина заметки — 1000 символов.
+    </small>
+    }
+  </div>
+
+  <button type="submit"
+          class="btn btn-primary"
+          id="submit-btn"
+          [disabled]="studentForm.invalid || isSubmitting()">
+    @if (isSubmitting()) {
+    <span class="spinner"></span>
+    <span>Сохранение...</span>
+    } @else {
+    <span>{{ isEditMode() ? 'Сохранить изменения' : 'Сохранить данные' }}</span>
+    }
+  </button>
+</form>
+}
