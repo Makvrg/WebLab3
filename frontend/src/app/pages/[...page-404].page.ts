@@ -7,9 +7,9 @@ import { UserContextService } from '../user-context/user-context.service';
   imports: [RouterLink],
   template: `
     <div class="card" style="text-align: center; margin-top: 40px; padding: 40px;">
-      <h2>404 — Страница не найдена</h2>
+      <h2>404 - Страница не найдена :(</h2>
       <p style="margin: 15px 0; color: var(--text-muted);">
-        Запрошенный адрес не существует или был перемещен.
+        Запрошенный адрес не существует.
       </p>
       @if (isAuthenticated()) {
         <a routerLink="/students" class="btn btn-primary">Вернуться к списку студентов</a>
