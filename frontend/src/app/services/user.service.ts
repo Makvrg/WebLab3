@@ -6,7 +6,7 @@ import { UserProfile } from '../entity/UserProfile';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
-  private http = inject(HttpClient);
+  private http: HttpClient = inject(HttpClient);
 
   getUser (id: number): Observable<UserProfile> {
     return this.http.get<UserProfile>(
