@@ -43,3 +43,4 @@ build/
 backend/target/
 
 .env
+/frontend/.npmrc

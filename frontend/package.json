@@ -1,7 +1,9 @@
 {
   "name": "frontend",
   "version": "0.0.0",
+  "type": "module",
   "scripts": {
+    "dev": "vite",
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
@@ -11,11 +13,14 @@
   "private": true,
   "packageManager": "npm@11.19.1",
   "dependencies": {
+    "@analogjs/platform": "^2.9.5",
+    "@analogjs/router": "^2.9.5",
     "@angular/common": "^22.2.0",
     "@angular/compiler": "^22.2.0",
     "@angular/core": "^22.2.0",
     "@angular/forms": "^22.2.0",
     "@angular/platform-browser": "^22.2.0",
+    "@angular/platform-server": "^22.2.4",
     "@angular/router": "^22.2.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
@@ -27,6 +32,7 @@
     "jsdom": "^30.0.0",
     "prettier": "^3.8.1",
     "typescript": "~6.0.2",
+    "vite": "^8.3.5",
     "vitest": "^5.0.0"
   }
 }
