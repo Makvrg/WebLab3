@@ -7,9 +7,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, combineLatest, Observable, of, timer, } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged,
          finalize, map, startWith, switchMap, tap, exhaustMap,} from 'rxjs/operators';
-import { StudentService, StudentFilter } from '../../services/student.service';
-import { UserContextService } from '../../user-context/user-context.service';
-import { Student } from '../../entity/Student';
+import { StudentService, StudentFilter } from '../../../services/student.service';
+import { UserContextService } from '../../../user-context/user-context.service';
+import { Student } from '../../../entity/Student';
 
 export type SortField = 'isuId' | 'fio' | 'stGroup' | 'dormitoryNumber' | 'room';
 export type SortDirection = 'asc' | 'desc';
@@ -18,10 +18,10 @@ export type SortDirection = 'asc' | 'desc';
   selector: 'app-student-list',
   standalone: true,
   imports: [CommonModule, RouterLink, ReactiveFormsModule],
-  templateUrl: './student-list.component.html',
-  styleUrls: ['./student-list.component.css'],
+  templateUrl: './index.page.html',
+  styleUrls: ['./index.page.css'],
 })
-export class StudentListComponent implements OnInit {
+export default class StudentListPage implements OnInit {
   private readonly studentService: StudentService = inject(StudentService);
   private readonly userContext: UserContextService = inject(UserContextService);
   private readonly fb: FormBuilder = inject(FormBuilder);

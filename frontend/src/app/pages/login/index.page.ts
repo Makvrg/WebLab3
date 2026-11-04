@@ -10,10 +10,10 @@ import { AuthService } from '../../services/auth.service';
   selector: 'app-login',
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink, RouterLinkActive],
-  templateUrl: './login.component.html',
-  styleUrls: ['./login.component.css'],
+  templateUrl: './index.page.html',
+  styleUrls: ['./index.page.css'],
 })
-export class LoginComponent {
+export default class LoginPage {
   private readonly fb: FormBuilder = inject(FormBuilder);
   private readonly authService: AuthService = inject(AuthService);
   private readonly router: Router = inject(Router);

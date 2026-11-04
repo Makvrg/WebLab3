@@ -22,10 +22,10 @@ interface ProfileView {
   selector: 'app-profile',
   standalone: true,
   imports: [RouterLink],
-  templateUrl: './profile.component.html',
-  styleUrls: ['./profile.component.css'],
+  templateUrl: './index.page.html',
+  styleUrls: ['./index.page.css'],
 })
-export class ProfileComponent implements OnInit {
+export default class ProfilePage implements OnInit {
   private readonly userContextService: UserContextService = inject(UserContextService);
   private readonly userService: UserService = inject(UserService);
   private readonly authService: AuthService = inject(AuthService);

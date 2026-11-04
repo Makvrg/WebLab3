@@ -15,7 +15,7 @@ import { Student } from '../../entity/Student';
   templateUrl: './student-form.component.html',
   styleUrls: ['./student-form.component.css'],
 })
-export class StudentFormComponent implements OnInit {
+export default class StudentFormComponent implements OnInit {
   private readonly fb: FormBuilder = inject(FormBuilder);
   private readonly route: ActivatedRoute = inject(ActivatedRoute);
   private readonly router: Router = inject(Router);

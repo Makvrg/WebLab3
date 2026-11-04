@@ -5,18 +5,18 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { of, timer } from 'rxjs';
 import { catchError, filter, finalize, map, switchMap, tap, exhaustMap } from 'rxjs/operators';
-import { StudentService } from '../../services/student.service';
-import { UserContextService } from '../../user-context/user-context.service';
-import { Student } from '../../entity/Student';
+import { StudentService } from '../../../services/student.service';
+import { UserContextService } from '../../../user-context/user-context.service';
+import { Student } from '../../../entity/Student';
 
 @Component({
   selector: 'app-student-detail',
   standalone: true,
   imports: [CommonModule, RouterLink, DatePipe],
-  templateUrl: './student-detail.component.html',
-  styleUrls: ['./student-detail.component.css'],
+  templateUrl: './[id].page.html',
+  styleUrls: ['./[id].page.css'],
 })
-export class StudentDetailComponent implements OnInit {
+export default class StudentDetailPage implements OnInit {
   private readonly route: ActivatedRoute = inject(ActivatedRoute);
   private readonly studentService: StudentService = inject(StudentService);
   private readonly userContext: UserContextService = inject(UserContextService);

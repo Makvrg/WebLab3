@@ -1,11 +1,11 @@
 import { Routes } from '@angular/router';
 
-import { LoginComponent } from '../pages/login/login.component';
-import { RegisterComponent } from '../pages/register/register.component';
-import { ProfileComponent } from '../pages/profile/profile.component';
-import { StudentListComponent } from '../pages/student-list/student-list.component';
-import { StudentDetailComponent } from '../pages/student-detail/student-detail.component';
-import { StudentFormComponent } from '../pages/student-form/student-form.component';
+import { LoginPage } from '../pages/login/index.page';
+import { RegisterPage } from '../pages/register/index.page';
+import { ProfilePage } from '../pages/profile/index.page';
+import { StudentListPage } from '../pages/students/(list)/index.page';
+import { StudentDetailPage } from '../pages/students/(detail)/[id].page';
+import { StudentFormComponent } from '../components/student-form/student-form.component';
 
 import { authGuard } from './guards/auth.guard';
 import { guestGuard } from './guards/guest.guard';
@@ -16,14 +16,14 @@ export const routes: Routes = [
   // 1. Публичные страницы
   {
     path: 'login',
-    component: LoginComponent,
+    component: LoginPage,
     canActivate: [guestGuard],
     title: 'Вход',
   },
 
   {
     path: 'register',
-    component: RegisterComponent,
+    component: RegisterPage,
     canActivate: [guestGuard],
     title: 'Регистрация',
   },
@@ -44,7 +44,7 @@ export const routes: Routes = [
       // Профиль
       {
         path: 'profile',
-        component: ProfileComponent,
+        component: ProfilePage,
         title: 'Профиль',
       },
       // Работа со студентами
@@ -55,13 +55,13 @@ export const routes: Routes = [
           {
             path: '',
             pathMatch: 'full',
-            component: StudentListComponent,
+            component: StudentListPage,
             title: 'Студенты',
           },
           // Создание студента
           {
             path: 'create',
-            component: StudentFormComponent,
+            component: StudentFormPage,
             title: 'Создание студента',
             canActivate: [isAdminGuard],
             data: {
@@ -71,7 +71,7 @@ export const routes: Routes = [
           // Обновление данных студента
           {
             path: ':id/edit',
-            component: StudentFormComponent,
+            component: StudentFormPage,
             title: 'Редактирование студента',
             canActivate: [isAdminGuard],
             data: {
@@ -81,7 +81,7 @@ export const routes: Routes = [
           // Просмотр конкретного студента
           {
             path: ':id',
-            component: StudentDetailComponent,
+            component: StudentDetailPage,
             title: 'Карточка студента',
           },
         ],

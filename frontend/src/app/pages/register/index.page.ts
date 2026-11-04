@@ -25,10 +25,10 @@ import { Role } from '../../entity/Role';
   selector: 'app-register',
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink, RouterLinkActive],
-  templateUrl: './register.component.html',
-  styleUrls: ['./register.component.css'],
+  templateUrl: './index.page.html',
+  styleUrls: ['./index.page.css'],
 })
-export class RegisterComponent {
+export default class RegisterPage {
   private readonly fb: FormBuilder = inject(FormBuilder);
   private readonly authService: AuthService = inject(AuthService);
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
