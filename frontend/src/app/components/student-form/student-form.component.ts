@@ -1,4 +1,4 @@
-import {Component, OnInit, inject, signal, DestroyRef, WritableSignal} from '@angular/core';
+import { Component, OnInit, inject, signal, DestroyRef, WritableSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -26,6 +26,7 @@ export default class StudentFormComponent implements OnInit {
   readonly isLoadingData: WritableSignal<boolean> = signal<boolean>(false);
   readonly isSubmitting: WritableSignal<boolean> = signal<boolean>(false);
   readonly errorMessage: WritableSignal<string | null> = signal<string | null>(null);
+  readonly fieldErrors: WritableSignal<Record<string, string>> = signal({});
 
   private editingIsuId: number | null = null;
 
@@ -63,7 +64,7 @@ export default class StudentFormComponent implements OnInit {
     const idParam: string | null = this.route.snapshot.paramMap.get('id');
 
     if (idParam) {
-      const numericId = Number(idParam);
+      const numericId: number = Number(idParam);
       if (Number.isInteger(numericId) && numericId > 0) {
         this.isEditMode.set(true);
         this.editingIsuId = numericId;
@@ -99,7 +100,9 @@ export default class StudentFormComponent implements OnInit {
           const msg =
             err.status === 0
               ? 'Не удалось связаться с сервером.'
-              : err.error?.error?.message || err.error?.message || 'Не удалось загрузить данные студента.';
+              : err.status === 404
+                ? 'Редактируемый студент не найден.'
+                : err.error?.error?.message || err.error?.message || 'Не удалось загрузить данные студента.';
           this.errorMessage.set(msg);
         },
       });
@@ -113,6 +116,7 @@ export default class StudentFormComponent implements OnInit {
 
     this.isSubmitting.set(true);
     this.errorMessage.set(null);
+    this.fieldErrors.set({});
 
     const val = this.studentForm.getRawValue();
     const payload = new Student(
@@ -141,12 +145,52 @@ export default class StudentFormComponent implements OnInit {
           this.router.navigate(['/students']);
         },
         error: (err: HttpErrorResponse) => {
-          const msg =
-            err.status === 0
-              ? 'Не удалось связаться с сервером.'
-              : err.error?.error?.message || err.error?.message || 'Ошибка сохранения данных.';
-          this.errorMessage.set(msg);
+          this.handleBackendError(err);
         },
       });
+  }
+
+  private handleBackendError(err: HttpErrorResponse): void {
+    if (err.status === 0) {
+      this.errorMessage.set('Не удалось связаться с сервером. Проверьте соединение.');
+      return;
+    }
+
+    // 409 Conflict: студент с таким ИСУ уже зарегистрирован
+    if (err.status === 409) {
+      const msg = err.error?.message || 'Студент с таким номером ИСУ уже существует.';
+      this.errorMessage.set(msg);
+      this.studentForm.get('isuId')?.setErrors({ serverConflict: true });
+      return;
+    }
+
+    // 400 или 422: ошибки валидации полей от Spring Boot
+    if (err.status === 400 || err.status === 422) {
+      const errorsObj: Record<string, string> = {};
+
+      if (Array.isArray(err.error?.errors)) {
+        for (const item of err.error.errors) {
+          if (item.field) {
+            errorsObj[item.field] = item.defaultMessage || item.message;
+            this.studentForm.get(item.field)?.setErrors({ serverError: true });
+          }
+        }
+      } else if (err.error?.fieldErrors && typeof err.error.fieldErrors === 'object') {
+        for (const [field, message] of Object.entries(err.error.fieldErrors)) {
+          errorsObj[field] = String(message);
+          this.studentForm.get(field)?.setErrors({ serverError: true });
+        }
+      }
+
+      this.fieldErrors.set(errorsObj);
+      this.errorMessage.set(
+        err.error?.message || 'Ошибка валидации данных. Проверьте заполнение формы.'
+      );
+      return;
+    }
+
+    this.errorMessage.set(
+      err.error?.error?.message || err.error?.message || 'Ошибка при сохранении данных.'
+    );
   }
 }

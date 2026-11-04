@@ -109,7 +109,7 @@ export default class StudentListPage implements OnInit {
               }
 
               return this.studentService
-                .getStudents(filters, page)
+                .getStudents(filters, page, isPolling)
                 .pipe(
                   map((items) =>
                     (items ?? []).map(
@@ -172,6 +172,12 @@ export default class StudentListPage implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe();
+
+    this.studentService.cacheInvalidated$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.reload$.next();
+      });
   }
 
   toggleFilters(): void {
