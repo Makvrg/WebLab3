@@ -4,15 +4,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
+    "build": "vite build",
     "test": "ng test"
   },
   "private": true,
   "packageManager": "npm@11.19.1",
   "dependencies": {
+    "@analogjs/content": "^2.9.6",
     "@analogjs/platform": "^2.9.5",
     "@analogjs/router": "^2.9.5",
     "@angular/common": "^22.2.0",

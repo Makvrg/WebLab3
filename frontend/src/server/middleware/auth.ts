@@ -24,10 +24,16 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const isAuth = !!role;
+  const refreshToken = getCookie(event, 'refreshToken');
+  const isAuth = !!role || !!refreshToken;
   const isAuthPage = path === '/login' || path === '/register';
   const isProtectedPage = path.startsWith('/students') || path === '/profile';
   const isAdminOnlyPage = path === '/students/create' || /^\/students\/\d+\/edit$/.test(path);
+
+  if (path === '/') {
+    await sendRedirect(event, isAuth ? '/students' : '/login', 302);
+    return;
+  }
 
   // Неавторизованный пользователь на закрытых маршрутах
   if (!isAuth && isProtectedPage) {
