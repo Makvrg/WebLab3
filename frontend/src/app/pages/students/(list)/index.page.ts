@@ -244,11 +244,16 @@ export default class StudentListPage implements OnInit {
 
   private setPage(page: number): void {
     this.currentPage.set(page);
-    localStorage.setItem('pageNumber', String(page));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pageNumber', String(page));
+    }
     this.page$.next(page);
   }
 
   private getInitialPage(): number {
+    if (typeof window === 'undefined') {
+      return 1;
+    }
     const saved = Number(localStorage.getItem('pageNumber'));
     return Number.isInteger(saved) && saved > 0 ? saved : 1;
   }

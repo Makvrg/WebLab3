@@ -2,12 +2,13 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import {
   Observable, catchError, finalize,
-  map, shareReplay, tap, throwError
+  map, shareReplay, tap, throwError, of
 } from 'rxjs';
 import { AUTH_URL } from './api.constants';
 import { UserContextService } from '../user-context/user-context.service';
 import { UserContext } from '../user-context/user-context.model';
 import { extractUserFromToken } from '../utils/jwt.util';
+import { setCookie, getCookie, removeCookie } from '../utils/cookie.util';
 
 export interface TokenResponse {
   accessToken: string;
@@ -17,12 +18,15 @@ export interface TokenResponse {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private http = inject(HttpClient);
+  private readonly http = inject(HttpClient);
+  private readonly userContextService = inject(UserContextService);
   private refreshRequest$?: Observable<string>;
-  private userContextService: UserContextService = inject(UserContextService);
 
   getAccessToken(): string | null {
-    return localStorage.getItem('accessToken');
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    return localStorage.getItem('accessToken') || getCookie('accessToken');
   }
 
   login(login: string, password: string): Observable<TokenResponse> {
@@ -37,6 +41,10 @@ export class AuthService {
   }
 
   refreshTokens(): Observable<string> {
+    if (typeof window === 'undefined') {
+      return throwError(() => new Error('Обновление токена невозможно на сервере'));
+    }
+
     const refreshTokenId = Number(localStorage.getItem('refreshTokenId'));
     const refreshToken = localStorage.getItem('refreshToken');
 
@@ -69,6 +77,11 @@ export class AuthService {
   }
 
   logout(): Observable<void> {
+    if (typeof window === 'undefined') {
+      this.clearTokensAndContext();
+      return of(undefined);
+    }
+
     const body = {
       refreshTokenId: Number(localStorage.getItem('refreshTokenId')),
       refreshToken: localStorage.getItem('refreshToken')
@@ -81,11 +94,12 @@ export class AuthService {
   }
 
   private clearTokensAndContext(): void {
-    for (const key of [
-      'accessToken', 'refreshTokenId', 'refreshToken'
-    ]) {
-      localStorage.removeItem(key);
+    if (typeof window !== 'undefined') {
+      for (const key of ['accessToken', 'refreshTokenId', 'refreshToken']) {
+        localStorage.removeItem(key);
+      }
     }
+    removeCookie('accessToken');
     this.userContextService.clearUser();
   }
 
@@ -103,9 +117,12 @@ export class AuthService {
       throw new Error('Сервер вернул некорректный токен');
     }
 
-    localStorage.setItem('accessToken', tokens.accessToken);
-    localStorage.setItem('refreshTokenId', String(tokens.refreshTokenId));
-    localStorage.setItem('refreshToken', tokens.refreshToken);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('accessToken', tokens.accessToken);
+      localStorage.setItem('refreshTokenId', String(tokens.refreshTokenId));
+      localStorage.setItem('refreshToken', tokens.refreshToken);
+    }
+    setCookie('accessToken', tokens.accessToken, 7);
 
     this.userContextService.setUser(userContext);
   }
