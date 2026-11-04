@@ -37,19 +37,5 @@
     Базовый доступ (USER): просмотр списка заявок, детальной карточки студента, фильтрация и сортировка данных.
     }
   </blockquote>
-
-  <hr>
-
-  <div style="display: flex; gap: 10px; justify-content: flex-end;">
-    <button type="button"
-            class="btn btn-danger"
-            [disabled]="isLoggingOut()"
-            (click)="onLogout()">
-      @if (isLoggingOut()) {
-      <span class="spinner"></span>
-      }
-      Выйти из аккаунта
-    </button>
-  </div>
 </div>
 }

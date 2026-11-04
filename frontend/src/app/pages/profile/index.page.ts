@@ -1,17 +1,17 @@
 import { Component, DestroyRef, OnInit, WritableSignal, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { finalize, of, timer } from 'rxjs';
+import { of, timer } from 'rxjs';
 import { catchError, exhaustMap, map, tap, } from 'rxjs/operators';
 
-import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
 import { UserContextService } from '../../user-context/user-context.service';
 import { UserContext } from '../../user-context/user-context.model';
 import { UserProfile } from '../../entity/UserProfile';
 import { Role } from '../../entity/Role';
+import { getErrorMessage } from '../../utils/error.util';
 
 interface ProfileView {
   userId: number;
@@ -30,14 +30,11 @@ interface ProfileView {
 export default class ProfilePage implements OnInit {
   private readonly userContextService: UserContextService = inject(UserContextService);
   private readonly userService: UserService = inject(UserService);
-  private readonly authService: AuthService = inject(AuthService);
-  private readonly router: Router = inject(Router);
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
   private readonly platformId: Object = inject(PLATFORM_ID);
 
   readonly user: WritableSignal<ProfileView | null> = signal<ProfileView | null>(null);
   readonly errorMessage: WritableSignal<string | null> = signal<string | null>(null);
-  readonly isLoggingOut: WritableSignal<boolean> = signal<boolean>(false);
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
@@ -73,7 +70,7 @@ export default class ProfilePage implements OnInit {
             catchError((err: unknown) => {
               if (!isPolling) {
                 this.errorMessage.set(
-                  this.getErrorMessage(
+                  getErrorMessage(
                     err,
                     'Не удалось загрузить профиль пользователя.'
                   )
@@ -95,63 +92,5 @@ export default class ProfilePage implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe();
-  }
-
-  onLogout(): void {
-    if (this.isLoggingOut()) {
-      return;
-    }
-
-    this.isLoggingOut.set(true);
-    this.errorMessage.set(null);
-
-    this.authService
-      .logout()
-      .pipe(
-        finalize(() => {
-          this.isLoggingOut.set(false);
-          this.router.navigate(['/login']);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        error: () => {},
-      });
-  }
-
-
-  private getErrorMessage(error: unknown, fallback: string): string {
-    if (typeof error !== 'object' || error === null) {
-      return fallback;
-    }
-
-    const err = error as {
-      error?: unknown;
-    };
-
-    if (typeof err.error !== 'object' || err.error === null) {
-      return fallback;
-    }
-
-    const response = err.error as {
-      error?: unknown;
-    };
-
-    if (typeof response.error !== 'object' || response.error === null) {
-      return fallback;
-    }
-
-    const apiError = response.error as {
-      message?: unknown;
-    };
-
-    if (
-      typeof apiError.message === 'string' &&
-      apiError.message.trim()
-    ) {
-      return apiError.message;
-    }
-
-    return fallback;
   }
 }

@@ -1,4 +1,16 @@
-import { defineEventHandler, getCookie, getRequestURL, proxyRequest, readRawBody } from 'h3';
+import { defineEventHandler, getCookie, getRequestURL, proxyRequest } from 'h3';
+import { Buffer } from 'node:buffer';
+
+async function readNodeStream(req: any): Promise<string> {
+  if (req.body) {
+    return typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+  }
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks).toString('utf-8');
+}
 
 export default defineEventHandler(async (event) => {
   const rawBackendUrl = process.env['BACKEND_URL'] || 'http://backend:8080';
@@ -14,31 +26,35 @@ export default defineEventHandler(async (event) => {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const incomingContentType = event.node.req.headers['content-type'];
-  if (incomingContentType) {
-    headers['content-type'] = incomingContentType;
-  }
+  if (event.node.req.method?.toUpperCase() === 'QUERY') {
+    const rawBody = await readNodeStream(event.node.req);
 
-  if ((event.method as string) === 'QUERY') {
-    const rawBody = await readRawBody(event);
+    const queryHeaders: Record<string, string> = {
+      ...headers,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
 
     const backendRes = await fetch(targetUrl, {
       method: 'QUERY',
-      headers: {
-        ...headers,
-        'Content-Type': incomingContentType || 'application/json',
-      },
-      body: rawBody || '{}',
+      headers: queryHeaders,
+      body: rawBody && rawBody.trim().length > 0 ? rawBody : '{}',
     });
 
     event.node.res.statusCode = backendRes.status;
+
     backendRes.headers.forEach((val, key) => {
       if (!['content-encoding', 'content-length'].includes(key.toLowerCase())) {
         event.node.res.setHeader(key, val);
       }
     });
 
-    return await backendRes.text();
+    const text = await backendRes.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
   }
 
   return proxyRequest(event, targetUrl, {
