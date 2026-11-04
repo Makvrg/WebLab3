@@ -37,16 +37,21 @@ export default defineEventHandler(async (event) => {
 
   // Неавторизованный пользователь на закрытых маршрутах
   if (!isAuth && isProtectedPage) {
-    return sendRedirect(event, '/login', 302);
+    await sendRedirect(event, '/login', 302);
+    return;
   }
 
   // Авторизованный пользователь на страницах входа или регистрации
   if (isAuth && isAuthPage) {
-    return sendRedirect(event, '/students', 302);
+    await sendRedirect(event, '/students', 302);
+    return;
   }
 
   // Пользователь с ролью USER на страницах создания или редактирования
   if (isAuth && role !== 'ADMIN' && isAdminOnlyPage) {
-    return sendRedirect(event, '/students', 302);
+    await sendRedirect(event, '/students', 302);
+    return;
   }
+
+  return;
 });

@@ -1,5 +1,7 @@
 import { Component, DestroyRef, OnInit, WritableSignal, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, of, timer } from 'rxjs';
 import { catchError, exhaustMap, map, tap, } from 'rxjs/operators';
@@ -31,13 +33,16 @@ export default class ProfilePage implements OnInit {
   private readonly authService: AuthService = inject(AuthService);
   private readonly router: Router = inject(Router);
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
+  private readonly platformId: Object = inject(PLATFORM_ID);
 
   readonly user: WritableSignal<ProfileView | null> = signal<ProfileView | null>(null);
   readonly errorMessage: WritableSignal<string | null> = signal<string | null>(null);
   readonly isLoggingOut: WritableSignal<boolean> = signal<boolean>(false);
 
   ngOnInit(): void {
-    this.loadProfile();
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadProfile();
+    }
   }
 
   private loadProfile(): void {

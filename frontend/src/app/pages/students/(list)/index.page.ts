@@ -1,5 +1,7 @@
 import {Component, OnInit, inject, signal, computed, DestroyRef, WritableSignal, Signal} from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -26,6 +28,7 @@ export default class StudentListPage implements OnInit {
   private readonly userContext: UserContextService = inject(UserContextService);
   private readonly fb: FormBuilder = inject(FormBuilder);
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
+  private readonly platformId: Object = inject(PLATFORM_ID);
 
   readonly pageSize: number = 8;
   readonly isAdmin: Signal<boolean> = this.userContext.isAdmin;
@@ -76,6 +79,7 @@ export default class StudentListPage implements OnInit {
   });
 
   ngOnInit(): void {
+    const isBrowser = isPlatformBrowser(this.platformId);
     const filters$: Observable<StudentFilter> =
       this.filterForm.valueChanges.pipe(
         startWith(this.filterForm.getRawValue()),
@@ -98,8 +102,9 @@ export default class StudentListPage implements OnInit {
       this.reload$,
     ])
       .pipe(
-        switchMap(([filters, page]) =>
-          timer(0, 5000).pipe(
+        switchMap(([filters, page]) => {
+          const poll$ = isBrowser ? timer(0, 5000) : of(0);
+          return poll$.pipe(
             exhaustMap((tick) => {
               const isPolling: boolean = tick > 0;
 
@@ -167,7 +172,7 @@ export default class StudentListPage implements OnInit {
                   })
                 );
             })
-          )
+          )}
         ),
         takeUntilDestroyed(this.destroyRef)
       )
