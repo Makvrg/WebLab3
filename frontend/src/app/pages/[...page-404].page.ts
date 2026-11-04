@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { UserContextService } from '../user-context/user-context.service';
 
 @Component({
   standalone: true,
@@ -10,8 +11,15 @@ import { RouterLink } from '@angular/router';
       <p style="margin: 15px 0; color: var(--text-muted);">
         Запрошенный адрес не существует или был перемещен.
       </p>
-      <a routerLink="/students" class="btn btn-primary">Вернуться к списку студентов</a>
+      @if (isAuthenticated()) {
+        <a routerLink="/students" class="btn btn-primary">Вернуться к списку студентов</a>
+      } @else {
+        <a routerLink="/login" class="btn btn-primary">Перейти ко входу</a>
+      }
     </div>
   `,
 })
-export default class NotFoundPage {}
+export default class NotFoundPage {
+  private readonly userContext = inject(UserContextService);
+  readonly isAuthenticated = this.userContext.isAuthenticated;
+}
