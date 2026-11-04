@@ -20,6 +20,7 @@ import { finalize } from 'rxjs';
 
 import { AuthService } from '../../services/auth.service';
 import { Role } from '../../entity/Role';
+import { getErrorMessage } from '../../utils/error.util';
 
 @Component({
   selector: 'app-register',
@@ -134,48 +135,12 @@ export default class RegisterPage {
         },
         error: (err: unknown) => {
           this.errorMessage.set(
-            this.getErrorMessage(
+            getErrorMessage(
               err,
               'Не удалось зарегистрировать пользователя. Попробуйте ещё раз.'
             )
           );
         },
       });
-  }
-
-
-  private getErrorMessage(error: unknown, fallback: string): string {
-    if (typeof error !== 'object' || error === null) {
-      return fallback;
-    }
-
-    const err = error as {
-      error?: unknown;
-    };
-
-    if (typeof err.error !== 'object' || err.error === null) {
-      return fallback;
-    }
-
-    const response = err.error as {
-      error?: unknown;
-    };
-
-    if (typeof response.error !== 'object' || response.error === null) {
-      return fallback;
-    }
-
-    const apiError = response.error as {
-      message?: unknown;
-    };
-
-    if (
-      typeof apiError.message === 'string' &&
-      apiError.message.trim()
-    ) {
-      return apiError.message;
-    }
-
-    return fallback;
   }
 }

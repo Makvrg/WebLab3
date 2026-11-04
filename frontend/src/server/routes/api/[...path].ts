@@ -1,7 +1,8 @@
 import { defineEventHandler, getCookie, proxyRequest, getRequestURL } from 'h3';
 
 export default defineEventHandler(async (event) => {
-  const backendUrl = process.env['BACKEND_URL'] || 'http://localhost:8080';
+  const rawBackendUrl = process.env['BACKEND_URL'] || 'http://localhost:8080';
+  const backendUrl = rawBackendUrl.replace(/\/+$/, '');
   const token = getCookie(event, 'accessToken');
 
   const url = getRequestURL(event);
