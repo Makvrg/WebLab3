@@ -3,7 +3,9 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "63342:80"
+      - "63342:3000"
+    environment:
+      - BACKEND_URL=${BACKEND_URL}
     depends_on:
       - backend
 

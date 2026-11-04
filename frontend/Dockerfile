@@ -5,11 +5,17 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
-RUN npm run build -- --configuration production
+RUN npm run build
 
-FROM nginx:alpine
-COPY --from=build /app/dist/frontend/browser /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+FROM node:22-alpine AS runner
+WORKDIR /app
 
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+ENV NODE_ENV=production
+ENV PORT=3000
+
+COPY --from=build /app/dist/analog /app/dist/analog
+COPY package*.json ./
+
+EXPOSE 3000
+
+CMD ["node", "dist/analog/server/index.mjs"]

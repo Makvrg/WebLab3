@@ -1,7 +1,5 @@
 import { Injectable, signal, computed, Signal } from '@angular/core';
 import { UserContext } from './user-context.model';
-import { extractUserFromToken } from '../utils/jwt.util';
-import { getCookie } from '../utils/cookie.util';
 
 @Injectable({ providedIn: 'root' })
 export class UserContextService {
@@ -10,8 +8,8 @@ export class UserContextService {
   readonly user: Signal<UserContext | null> = this._user.asReadonly();
 
   readonly isAuthenticated: Signal<boolean> = computed(() => {
-    const userContext: UserContext | null = this._user();
-    return !!(userContext && userContext.login && userContext.role);
+    const u = this._user();
+    return !!(u && u.login && u.role);
   });
 
   readonly isAdmin: Signal<boolean> = computed(() => {
@@ -20,17 +18,29 @@ export class UserContextService {
 
   setUser(user: UserContext | null): void {
     this._user.set(user);
+    if (typeof window !== 'undefined') {
+      if (user) {
+        localStorage.setItem('userContext', JSON.stringify(user));
+      } else {
+        localStorage.removeItem('userContext');
+      }
+    }
   }
 
   clearUser(): void {
-    this._user.set(null);
+    this.setUser(null);
   }
 
   private getInitialUser(): UserContext | null {
     if (typeof window === 'undefined') {
       return null;
     }
-    const token = localStorage.getItem('accessToken') || getCookie('accessToken');
-    return extractUserFromToken(token);
+    const saved = localStorage.getItem('userContext');
+    if (!saved) return null;
+    try {
+      return JSON.parse(saved);
+    } catch {
+      return null;
+    }
   }
 }
