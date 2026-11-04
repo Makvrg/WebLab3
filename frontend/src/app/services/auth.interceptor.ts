@@ -1,6 +1,6 @@
 import {
   HttpErrorResponse,
-  HttpInterceptorFn
+  HttpInterceptorFn, HttpRequest
 } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, switchMap, throwError } from 'rxjs';
@@ -9,7 +9,7 @@ import { AuthService } from './auth.service';
 import { AUTH_URL } from './api.constants';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const auth = inject(AuthService);
+  const auth: AuthService = inject(AuthService);
 
   const authBase = new URL(AUTH_URL, window.location.origin);
   const authPath: string = authBase.pathname.replace(/\/+$/, '');
@@ -41,7 +41,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   const accessToken: string | null = auth.getAccessToken();
 
-  const authReq = accessToken && !skipBearer
+  const authReq: HttpRequest<unknown> = accessToken && !skipBearer
     ? req.clone({
       setHeaders: {
         Authorization: `Bearer ${accessToken}`

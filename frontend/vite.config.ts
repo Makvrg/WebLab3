@@ -8,13 +8,23 @@ export default defineConfig(() => ({
       nitro: {
         routeRules: {
           '/api/**': {
-            proxy: 'http://localhost:8080/api/**'
-          }
-        }
-      }
-    })
+            proxy: 'http://127.0.0.1:5000/**',
+          },
+        },
+      },
+    }),
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
   resolve: {
-    mainFields: ['module']
-  }
+    mainFields: ['module'],
+  },
 }));
