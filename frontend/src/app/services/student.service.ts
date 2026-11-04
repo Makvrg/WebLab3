@@ -73,7 +73,10 @@ export class StudentService {
           .set('pageSize', this.pageSize)
           .set('pageNumber', pageNumber),
       })
-      : this.http.request<Student[]>('QUERY', STUDENTS_URL, { body: query });
+      : this.http.request<Student[]>('QUERY', STUDENTS_URL, {
+        body: query,
+        headers: { 'Content-Type': 'application/json' },
+      });
 
     return request$.pipe(
       tap((students) => {
