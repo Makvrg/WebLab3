@@ -8,9 +8,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { of, timer } from 'rxjs';
 import { catchError, exhaustMap, map, tap, finalize } from 'rxjs/operators';
-import { StudentService } from '../../../services/student.service';
-import { UserContextService } from '../../../user-context/user-context.service';
-import { Student } from '../../../entity/Student';
+import { StudentService } from '../../services/student.service';
+import { UserContextService } from '../../user-context/user-context.service';
+import { Student } from '../../entity/Student';
 
 @Component({
   selector: 'app-student-detail',

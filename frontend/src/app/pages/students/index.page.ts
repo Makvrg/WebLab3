@@ -9,9 +9,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, combineLatest, Observable, of, timer, } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged,
          finalize, map, startWith, switchMap, tap, exhaustMap,} from 'rxjs/operators';
-import { StudentService, StudentFilter } from '../../../services/student.service';
-import { UserContextService } from '../../../user-context/user-context.service';
-import { Student } from '../../../entity/Student';
+import { StudentService, StudentFilter } from '../../services/student.service';
+import { UserContextService } from '../../user-context/user-context.service';
+import { Student } from '../../entity/Student';
 
 export type SortField = 'isuId' | 'fio' | 'stGroup' | 'dormitoryNumber' | 'room';
 export type SortDirection = 'asc' | 'desc';
