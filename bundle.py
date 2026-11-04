@@ -9,6 +9,8 @@ LANG_MAP = {
     ".css": "css",
     ".scss": "scss",
     ".js": "javascript",
+    ".mjs": "javascript",
+    ".cjs": "javascript",
     ".json": "json",
     ".java": "java",
     ".xml": "xml",
@@ -18,6 +20,7 @@ LANG_MAP = {
     ".yml": "yaml",
     ".yaml": "yaml",
     ".sh": "bash",
+    ".conf": "nginx",
 }
 
 SPECIAL_FILES = {
@@ -27,16 +30,21 @@ SPECIAL_FILES = {
     ".gitignore": "text",
     ".editorconfig": "text",
     ".prettierrc": "json",
+    "nginx.conf": "nginx",
 }
 
 EXCLUDE_DIRS = {
     "node_modules",
-    ".angular",
-    "dist",
-    "target",
     ".git",
     ".idea",
     ".vscode",
+    ".angular",
+    "dist",
+    "target",
+    ".vite",
+    ".analog",
+    ".nitro",
+    ".output",
 }
 
 EXCLUDE_FILES = {
@@ -44,6 +52,7 @@ EXCLUDE_FILES = {
     "package-lock.json",
     "favicon.ico",
     ".DS_Store",
+    "bundle.py",
 }
 
 
