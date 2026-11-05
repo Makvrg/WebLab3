@@ -1,20 +1,41 @@
-import {Component, OnInit, inject, signal, computed, DestroyRef, WritableSignal, Signal} from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import {
+  Component,
+  OnInit,
+  inject,
+  signal,
+  computed,
+  DestroyRef,
+  WritableSignal,
+  Signal,
+  PLATFORM_ID,
+  TransferState,
+  makeStateKey,
+} from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { BehaviorSubject, combineLatest, Observable, of, timer, } from 'rxjs';
-import { catchError, debounceTime, distinctUntilChanged,
-         finalize, map, startWith, switchMap, tap, exhaustMap,} from 'rxjs/operators';
+import { BehaviorSubject, combineLatest, Observable, of, timer } from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  finalize,
+  map,
+  startWith,
+  switchMap,
+  tap,
+  exhaustMap,
+} from 'rxjs/operators';
 import { StudentService, StudentFilter } from '../../services/student.service';
 import { UserContextService } from '../../user-context/user-context.service';
 import { Student } from '../../entity/Student';
 
 export type SortField = 'isuId' | 'fio' | 'stGroup' | 'dormitoryNumber' | 'room';
 export type SortDirection = 'asc' | 'desc';
+
+const STUDENTS_STATE_KEY = makeStateKey<Student[]>('STUDENTS_LIST');
 
 @Component({
   selector: 'app-student-list',
@@ -29,6 +50,7 @@ export default class StudentListPage implements OnInit {
   private readonly fb: FormBuilder = inject(FormBuilder);
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
   private readonly platformId: Object = inject(PLATFORM_ID);
+  private readonly transferState: TransferState = inject(TransferState);
 
   readonly pageSize: number = 8;
   readonly isAdmin: Signal<boolean> = this.userContext.isAdmin;
@@ -53,14 +75,19 @@ export default class StudentListPage implements OnInit {
   readonly sortField: WritableSignal<SortField> = signal<SortField>('isuId');
   readonly sortDirection: WritableSignal<SortDirection> = signal<SortDirection>('asc');
 
-  private readonly rawStudents: WritableSignal<Student[]> = signal<Student[]>([]);
-  private readonly page$: BehaviorSubject<number> =
-    new BehaviorSubject<number>(this.currentPage());
-  private readonly reload$: BehaviorSubject<void> =
-    new BehaviorSubject<void>(undefined);
+  // Инициализируем сигнал данными от SSR (если они есть) вместо пустого []
+  private readonly rawStudents: WritableSignal<Student[]> = signal<Student[]>(
+    this.getInitialStudents()
+  );
 
-  readonly hasNextPage: Signal<boolean> =
-    computed(() => this.rawStudents().length >= this.pageSize);
+  private readonly page$: BehaviorSubject<number> = new BehaviorSubject<number>(
+    this.currentPage()
+  );
+  private readonly reload$: BehaviorSubject<void> = new BehaviorSubject<void>(undefined);
+
+  readonly hasNextPage: Signal<boolean> = computed(
+    () => this.rawStudents().length >= this.pageSize
+  );
 
   readonly students: Signal<Student[]> = computed<Student[]>(() => {
     const list: Student[] = [...this.rawStudents()];
@@ -80,21 +107,20 @@ export default class StudentListPage implements OnInit {
 
   ngOnInit(): void {
     const isBrowser = isPlatformBrowser(this.platformId);
-    const filters$: Observable<StudentFilter> =
-      this.filterForm.valueChanges.pipe(
-        startWith(this.filterForm.getRawValue()),
-        debounceTime(300),
-        map((raw) => this.normalizeFilters(raw)),
-        distinctUntilChanged(
-          (prev: StudentFilter, curr: StudentFilter) =>
-            JSON.stringify(prev) === JSON.stringify(curr)
-        ),
-        tap(() => {
-          if (this.currentPage() !== 1) {
-            this.setPage(1);
-          }
-        })
-      );
+    const filters$: Observable<StudentFilter> = this.filterForm.valueChanges.pipe(
+      startWith(this.filterForm.getRawValue()),
+      debounceTime(300),
+      map((raw) => this.normalizeFilters(raw)),
+      distinctUntilChanged(
+        (prev: StudentFilter, curr: StudentFilter) =>
+          JSON.stringify(prev) === JSON.stringify(curr)
+      ),
+      tap(() => {
+        if (this.currentPage() !== 1) {
+          this.setPage(1);
+        }
+      })
+    );
 
     combineLatest([
       filters$,
@@ -113,67 +139,62 @@ export default class StudentListPage implements OnInit {
                 this.errorMessage.set(null);
               }
 
-              return this.studentService
-                .getStudents(filters, page, isPolling)
-                .pipe(
-                  map((items) =>
-                    (items ?? []).map(
-                      (raw) =>
-                        new Student(
-                          Number(raw.isuId),
-                          String(raw.fio ?? ''),
-                          String(raw.stGroup ?? ''),
-                          Number(raw.dormitoryNumber),
-                          Number(raw.room),
-                          String(raw.dateOfPlacement ?? ''),
-                          Boolean(raw.isNotRussian),
-                          raw.notes ? String(raw.notes) : ''
-                        )
-                    )
-                  ),
+              return this.studentService.getStudents(filters, page, isPolling).pipe(
+                map((items) =>
+                  (items ?? []).map(
+                    (raw) =>
+                      new Student(
+                        Number(raw.isuId),
+                        String(raw.fio ?? ''),
+                        String(raw.stGroup ?? ''),
+                        Number(raw.dormitoryNumber),
+                        Number(raw.room),
+                        String(raw.dateOfPlacement ?? ''),
+                        Boolean(raw.isNotRussian),
+                        raw.notes ? String(raw.notes) : ''
+                      )
+                  )
+                ),
+                catchError((err: HttpErrorResponse): Observable<Student[] | null> => {
+                  if (isPolling) {
+                    return of(null);
+                  }
 
-                  catchError(
-                    (
-                      err: HttpErrorResponse
-                    ): Observable<Student[] | null> => {
-                      if (isPolling) {
-                        return of(null);
-                      }
+                  const msg =
+                    err.status === 0
+                      ? 'Не удалось связаться с сервером.'
+                      : err.error?.error?.message ||
+                      err.error?.message ||
+                      'Не удалось загрузить список студентов.';
 
-                      const msg =
-                        err.status === 0
-                          ? 'Не удалось связаться с сервером.'
-                          : err.error?.error?.message ||
-                          err.error?.message ||
-                          'Не удалось загрузить список студентов.';
+                  this.errorMessage.set(msg);
+                  return of([]);
+                }),
+                tap((data: Student[] | null) => {
+                  if (data === null) {
+                    return;
+                  }
 
-                      this.errorMessage.set(msg);
-                      return of([]);
-                    }
-                  ),
+                  this.rawStudents.set(data);
 
-                  tap((data: Student[] | null) => {
-                    if (data === null) {
-                      return;
-                    }
+                  // Сохраняем для клиента данные первого серверного рендера
+                  if (!isBrowser && data.length > 0) {
+                    this.transferState.set(STUDENTS_STATE_KEY, data);
+                  }
 
-                    this.rawStudents.set(data);
-
-
-                    if (isPolling) {
-                      this.errorMessage.set(null);
-                    }
-                  }),
-
-                  finalize(() => {
-                    if (!isPolling) {
-                      this.isLoading.set(false);
-                    }
-                  })
-                );
+                  if (isPolling) {
+                    this.errorMessage.set(null);
+                  }
+                }),
+                finalize(() => {
+                  if (!isPolling) {
+                    this.isLoading.set(false);
+                  }
+                })
+              );
             })
-          )}
-        ),
+          );
+        }),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe();
@@ -261,6 +282,29 @@ export default class StudentListPage implements OnInit {
     }
     const saved = Number(localStorage.getItem('pageNumber'));
     return Number.isInteger(saved) && saved > 0 ? saved : 1;
+  }
+
+  private getInitialStudents(): Student[] {
+    if (typeof window !== 'undefined' && this.transferState.hasKey(STUDENTS_STATE_KEY)) {
+      const cached = this.transferState.get(STUDENTS_STATE_KEY, null);
+      this.transferState.remove(STUDENTS_STATE_KEY);
+      if (cached && Array.isArray(cached)) {
+        return cached.map(
+          (raw) =>
+            new Student(
+              Number(raw.isuId),
+              String(raw.fio ?? ''),
+              String(raw.stGroup ?? ''),
+              Number(raw.dormitoryNumber),
+              Number(raw.room),
+              String(raw.dateOfPlacement ?? ''),
+              Boolean(raw.isNotRussian),
+              raw.notes ? String(raw.notes) : ''
+            )
+        );
+      }
+    }
+    return [];
   }
 
   private normalizeFilters(raw: any): StudentFilter {

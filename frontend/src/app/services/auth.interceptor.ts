@@ -1,11 +1,12 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
-import { inject, PLATFORM_ID, InjectionToken } from '@angular/core';
+import { inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
+import { SSR_COOKIE } from '../tokens/ssr-cookie.token';
 
-export const SSR_COOKIE = new InjectionToken<string>('SSR_COOKIE');
+export { SSR_COOKIE };
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);

@@ -10,106 +10,107 @@
     </button>
 
     @if (isAdmin()) {
-    <a routerLink="/students/create"
-       class="btn btn-primary"
-       id="add-btn">
-      Добавить студента
-    </a>
+      <a routerLink="/students/create"
+         class="btn btn-primary"
+         [class.disabled]="isLoading()"
+         id="add-btn">
+        Добавить студента
+      </a>
     }
   </div>
 </div>
 
 @if (errorMessage()) {
-<div id="table-error" class="alert-box alert-danger" role="alert">
-  {{ errorMessage() }}
-</div>
+  <div id="table-error" class="alert-box alert-danger" role="alert">
+    {{ errorMessage() }}
+  </div>
 }
 
 @if (successMessage()) {
-<div id="table-success" class="alert-box alert-success" role="status">
-  {{ successMessage() }}
-</div>
+  <div id="table-success" class="alert-box alert-success" role="status">
+    {{ successMessage() }}
+  </div>
 }
 
 @if (showFilters()) {
-<form class="filter-panel" [formGroup]="filterForm" (ngSubmit)="onResetFilters()">
-  <div class="filter-grid">
-    <div class="form-group">
-      <label for="filter-fio">Поиск по ФИО</label>
-      <input type="search"
-             id="filter-fio"
-             formControlName="fio"
-             placeholder="Иванов Иван...">
+  <form class="filter-panel" [formGroup]="filterForm" (ngSubmit)="onResetFilters()">
+    <div class="filter-grid">
+      <div class="form-group">
+        <label for="filter-fio">Поиск по ФИО</label>
+        <input type="search"
+               id="filter-fio"
+               formControlName="fio"
+               placeholder="Иванов Иван...">
+      </div>
+
+      <div class="form-group">
+        <label for="filter-isu">ИСУ ID</label>
+        <input type="number"
+               id="filter-isu"
+               formControlName="isuId"
+               placeholder="123456">
+      </div>
+
+      <div class="form-group">
+        <label for="filter-group">Группа</label>
+        <input type="text"
+               id="filter-group"
+               formControlName="stGroup"
+               placeholder="Например: P3224">
+      </div>
+
+      <div class="form-group">
+        <label for="filter-dorm">Номер общежития</label>
+        <input type="number"
+               id="filter-dorm"
+               formControlName="dormitoryNumber"
+               min="1"
+               max="4"
+               placeholder="1 - 4">
+      </div>
+
+      <div class="form-group">
+        <label for="filter-room">Комната</label>
+        <input type="number"
+               id="filter-room"
+               formControlName="room"
+               min="100"
+               max="2000"
+               placeholder="100 - 2000">
+      </div>
+
+      <div class="form-group">
+        <label for="filter-date">Срок заселения</label>
+        <input type="date"
+               id="filter-date"
+               formControlName="dateOfPlacement">
+      </div>
+
+      <div class="form-group">
+        <label for="filter-foreigner">Статус иностранца</label>
+        <select id="filter-foreigner" formControlName="isNotRussian">
+          <option value="">Все студенты</option>
+          <option value="true">Да (Иностранец)</option>
+          <option value="false">Нет (Гражданин РФ)</option>
+        </select>
+      </div>
     </div>
 
-    <div class="form-group">
-      <label for="filter-isu">ИСУ ID</label>
-      <input type="number"
-             id="filter-isu"
-             formControlName="isuId"
-             placeholder="123456">
+    <div class="filter-actions">
+      <button type="button"
+              class="btn"
+              (click)="onResetFilters()">
+        Сбросить фильтры
+      </button>
     </div>
-
-    <div class="form-group">
-      <label for="filter-group">Группа</label>
-      <input type="text"
-             id="filter-group"
-             formControlName="stGroup"
-             placeholder="Например: P3224">
-    </div>
-
-    <div class="form-group">
-      <label for="filter-dorm">Номер общежития</label>
-      <input type="number"
-             id="filter-dorm"
-             formControlName="dormitoryNumber"
-             min="1"
-             max="4"
-             placeholder="1 - 4">
-    </div>
-
-    <div class="form-group">
-      <label for="filter-room">Комната</label>
-      <input type="number"
-             id="filter-room"
-             formControlName="room"
-             min="100"
-             max="2000"
-             placeholder="100 - 2000">
-    </div>
-
-    <div class="form-group">
-      <label for="filter-date">Срок заселения</label>
-      <input type="date"
-             id="filter-date"
-             formControlName="dateOfPlacement">
-    </div>
-
-    <div class="form-group">
-      <label for="filter-foreigner">Статус иностранца</label>
-      <select id="filter-foreigner" formControlName="isNotRussian">
-        <option value="">Все студенты</option>
-        <option value="true">Да (Иностранец)</option>
-        <option value="false">Нет (Гражданин РФ)</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="filter-actions">
-    <button type="button"
-            class="btn"
-            (click)="onResetFilters()">
-      Сбросить фильтры
-    </button>
-  </div>
-</form>
+  </form>
 }
 
 <div class="table-responsive" id="main-content">
   @if (isLoading()) {
-  <div class="loading-overlay">
-    <div class="spinner spinner-primary"></div>
-  </div>
+    <div class="loading-overlay">
+      <div class="spinner spinner-primary"></div>
+    </div>
   }
 
   <table id="students-table">
@@ -149,48 +150,50 @@
     </tr>
     </thead>
     <tbody id="table-body">
-    @for (student of students(); track student.isuId) {
-    <tr>
-      <td>{{ student.isuId }}</td>
-      <td>{{ student.fio }}</td>
-      <td>{{ student.stGroup }}</td>
-      <td>{{ student.dormitoryNumber }}</td>
-      <td>{{ student.room }}</td>
-      <td class="actions">
-        <a [routerLink]="['/students', student.isuId]"
-           class="btn btn-small">
-          Просмотр
-        </a>
+      @for (student of students(); track student.isuId) {
+        <tr>
+          <td>{{ student.isuId }}</td>
+          <td>{{ student.fio }}</td>
+          <td>{{ student.stGroup }}</td>
+          <td>{{ student.dormitoryNumber }}</td>
+          <td>{{ student.room }}</td>
+          <td class="actions">
+            <a [routerLink]="['/students', student.isuId]"
+               class="btn btn-small"
+               [class.disabled]="isLoading() || deletingId() !== null">
+              Просмотр
+            </a>
 
-        @if (isAdmin()) {
-        <a [routerLink]="['/students', student.isuId, 'edit']"
-           class="btn btn-small btn-primary">
-          Изменить
-        </a>
-        <button type="button"
-                class="btn btn-small btn-danger btn-delete"
-                [disabled]="deletingId() === student.isuId"
-                (click)="onDelete(student.isuId)">
-          @if (deletingId() === student.isuId) {
-          <span class="spinner"></span>
-          } @else {
-          <span>Удалить</span>
-          }
-        </button>
-        }
-      </td>
-    </tr>
-    } @empty {
-    <tr>
-      <td colspan="6" class="empty-table-message">
-        @if (isLoading()) {
-        Загрузка списка студентов...
-        } @else {
-        Студенты по заданным критериям не найдены
-        }
-      </td>
-    </tr>
-    }
+            @if (isAdmin()) {
+              <a [routerLink]="['/students', student.isuId, 'edit']"
+                 class="btn btn-small btn-primary"
+                 [class.disabled]="isLoading() || deletingId() !== null">
+                Изменить
+              </a>
+              <button type="button"
+                      class="btn btn-small btn-danger btn-delete"
+                      [disabled]="isLoading() || deletingId() === student.isuId"
+                      (click)="onDelete(student.isuId)">
+                @if (deletingId() === student.isuId) {
+                  <span class="spinner"></span>
+                } @else {
+                  <span>Удалить</span>
+                }
+              </button>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="6" class="empty-table-message">
+            @if (isLoading()) {
+              Загрузка списка студентов...
+            } @else {
+              Студенты по заданным критериям не найдены
+            }
+          </td>
+        </tr>
+      }
     </tbody>
   </table>
 </div>

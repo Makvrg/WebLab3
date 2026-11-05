@@ -4,7 +4,7 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { renderApplication } from '@angular/platform-server';
 import AppComponent from './app/app.component';
 import { config } from './app/app.config.server';
-import { SSR_COOKIE } from './app/services/auth.interceptor';
+import { SSR_COOKIE } from './app/tokens/ssr-cookie.token';
 
 if (import.meta.env.PROD) {
   enableProdMode();
