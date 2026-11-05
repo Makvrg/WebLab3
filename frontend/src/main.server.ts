@@ -1,6 +1,6 @@
 import 'zone.js/node';
 import { ApplicationRef, enableProdMode } from '@angular/core';
-import { bootstrapApplication } from '@angular/platform-browser';
+import {bootstrapApplication, BootstrapContext} from '@angular/platform-browser';
 import { renderApplication } from '@angular/platform-server';
 import AppComponent from './app/app.component';
 import { config } from './app/app.config.server';
@@ -25,7 +25,7 @@ export default async function render(
     '';
 
   return await renderApplication(
-    (context) => bootstrap(context),
+    (context: BootstrapContext): Promise<ApplicationRef> => bootstrap(context) ,
     {
       document,
       url,

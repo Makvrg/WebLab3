@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import {Component, inject, Signal} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { UserContextService } from '../user-context/user-context.service';
 
@@ -20,6 +20,6 @@ import { UserContextService } from '../user-context/user-context.service';
   `,
 })
 export default class NotFoundPage {
-  private readonly userContext = inject(UserContextService);
-  readonly isAuthenticated = this.userContext.isAuthenticated;
+  private readonly userContext: UserContextService = inject(UserContextService);
+  readonly isAuthenticated: Signal<boolean> = this.userContext.isAuthenticated;
 }

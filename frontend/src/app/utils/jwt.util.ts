@@ -7,18 +7,18 @@ export function extractUserFromToken(token: string | null): UserContext | null {
   }
 
   try {
-    const parts = token.split('.');
+    const parts: string[] = token.split('.');
     if (parts.length !== 3) {
       return null;
     }
 
-    let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    let base64: string = parts[1].replace(/-/g, '+').replace(/_/g, '/');
     base64 = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
 
-    const jsonPayload = decodeURIComponent(
+    const jsonPayload: string = decodeURIComponent(
       atob(base64)
         .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .map((c: string): string => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
         .join('')
     );
 

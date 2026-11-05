@@ -36,7 +36,6 @@ export default class StudentDetailPage implements OnInit {
     const rawId: string | null = this.route.snapshot.paramMap.get('id');
     const studentId: number = Number(rawId);
 
-    // Валидация id до выполнения запросов
     if (!rawId || !Number.isInteger(studentId) || studentId <= 0) {
       this.isLoading.set(false);
       this.isNotFound.set(true);
@@ -44,16 +43,14 @@ export default class StudentDetailPage implements OnInit {
       return;
     }
 
-    // 1. Запрос для SSR и первого рендера
     this.loadStudentData(studentId, false);
 
-    // 2. Фоновый опрос каждые 5 сек запускается только на клиенте
     if (isPlatformBrowser(this.platformId)) {
       timer(5000, 5000)
         .pipe(
           exhaustMap(() =>
             this.studentService.getStudent(studentId, true).pipe(
-              map((raw) => this.mapToStudent(raw)),
+              map((raw: Student): Student => this.mapToStudent(raw)),
               catchError((err: HttpErrorResponse) => {
                 if (err.status === 404) {
                   this.isNotFound.set(true);
@@ -62,7 +59,7 @@ export default class StudentDetailPage implements OnInit {
                 }
                 return of(null);
               }),
-              tap((loaded) => {
+              tap((loaded: Student | null) => {
                 if (loaded) {
                   this.student.set(loaded);
                   this.errorMessage.set(null);
@@ -84,7 +81,7 @@ export default class StudentDetailPage implements OnInit {
     this.studentService
       .getStudent(id, bypassCache)
       .pipe(
-        map((raw) => this.mapToStudent(raw)),
+        map((raw: Student): Student => this.mapToStudent(raw)),
         catchError((err: HttpErrorResponse) => {
           if (err.status === 404) {
             this.isNotFound.set(true);
@@ -100,7 +97,7 @@ export default class StudentDetailPage implements OnInit {
           }
           return of(null);
         }),
-        tap((loaded) => {
+        tap((loaded: Student | null) => {
           if (loaded) {
             this.student.set(loaded);
           }

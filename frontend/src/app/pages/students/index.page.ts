@@ -1,4 +1,5 @@
-import {Component, OnInit, inject, signal, computed, DestroyRef, WritableSignal, Signal} from '@angular/core';
+import {Component, OnInit, inject, signal, computed,
+  DestroyRef, WritableSignal, Signal} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -67,9 +68,9 @@ export default class StudentListPage implements OnInit {
     const field: SortField = this.sortField();
     const dir: number = this.sortDirection() === 'asc' ? 1 : -1;
 
-    return list.sort((a, b) => {
-      const valA = a[field];
-      const valB = b[field];
+    return list.sort((a: Student, b: Student) => {
+      const valA: number | string = a[field];
+      const valB: number | string = b[field];
 
       if (typeof valA === 'number' && typeof valB === 'number') {
         return (valA - valB) * dir;
@@ -79,7 +80,7 @@ export default class StudentListPage implements OnInit {
   });
 
   ngOnInit(): void {
-    const isBrowser = isPlatformBrowser(this.platformId);
+    const isBrowser: boolean = isPlatformBrowser(this.platformId);
     const filters$: Observable<StudentFilter> =
       this.filterForm.valueChanges.pipe(
         startWith(this.filterForm.getRawValue()),
@@ -103,9 +104,9 @@ export default class StudentListPage implements OnInit {
     ])
       .pipe(
         switchMap(([filters, page]) => {
-          const poll$ = isBrowser ? timer(0, 5000) : of(0);
+          const poll$: Observable<number> = isBrowser ? timer(0, 5000) : of(0);
           return poll$.pipe(
-            exhaustMap((tick) => {
+            exhaustMap((tick: number) => {
               const isPolling: boolean = tick > 0;
 
               if (!isPolling) {
@@ -116,9 +117,9 @@ export default class StudentListPage implements OnInit {
               return this.studentService
                 .getStudents(filters, page, isPolling)
                 .pipe(
-                  map((items) =>
+                  map((items: Student[]) =>
                     (items ?? []).map(
-                      (raw) =>
+                      (raw: Student) =>
                         new Student(
                           Number(raw.isuId),
                           String(raw.fio ?? ''),
@@ -186,7 +187,7 @@ export default class StudentListPage implements OnInit {
   }
 
   toggleFilters(): void {
-    this.showFilters.update((v) => !v);
+    this.showFilters.update((v: boolean) => !v);
   }
 
   onResetFilters(): void {
@@ -203,7 +204,7 @@ export default class StudentListPage implements OnInit {
 
   onSort(field: SortField): void {
     if (this.sortField() === field) {
-      this.sortDirection.update((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+      this.sortDirection.update((dir: "asc" | "desc") => (dir === 'asc' ? 'desc' : 'asc'));
     } else {
       this.sortField.set(field);
       this.sortDirection.set('asc');

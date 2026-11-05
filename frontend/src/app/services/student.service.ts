@@ -20,11 +20,9 @@ export class StudentService {
   private readonly http: HttpClient = inject(HttpClient);
   private readonly pageSize: number = 8;
 
-  // In-memory кэш
   private readonly listCache: Map<string, Student[]> = new Map<string, Student[]>();
   private readonly studentCache: Map<number, Student> = new Map<number, Student>();
 
-  // Поток событий инвалидации кэша
   readonly cacheInvalidated$: Subject<void> = new Subject<void>();
 
   getStudents(
@@ -32,7 +30,7 @@ export class StudentService {
     pageNumber: number = 1,
     bypassCache: boolean = false
   ): Observable<Student[]> {
-    const cacheKey = JSON.stringify({ ...filters, pageNumber });
+    const cacheKey: string = JSON.stringify({ ...filters, pageNumber });
 
     if (!bypassCache && this.listCache.has(cacheKey)) {
       return of(this.listCache.get(cacheKey)!);
@@ -64,7 +62,7 @@ export class StudentService {
     }
 
     const hasFilters: boolean = Object.keys(query).some(
-      (k) => !['pageSize', 'pageNumber'].includes(k)
+      (k: string) => !['pageSize', 'pageNumber'].includes(k)
     );
 
     const request$: Observable<Student[]> = !hasFilters
@@ -79,9 +77,9 @@ export class StudentService {
       });
 
     return request$.pipe(
-      tap((students) => {
+      tap((students: Student[]) => {
         this.listCache.set(cacheKey, students);
-        students.forEach((s) => this.studentCache.set(Number(s.isuId), s));
+        students.forEach((s: Student) => this.studentCache.set(Number(s.isuId), s));
       })
     );
   }
@@ -94,7 +92,7 @@ export class StudentService {
     return this.http
       .get<Student>(`${STUDENTS_URL}/${encodeURIComponent(id)}`)
       .pipe(
-        tap((student) => {
+        tap((student: Student) => {
           this.studentCache.set(id, student);
         })
       );

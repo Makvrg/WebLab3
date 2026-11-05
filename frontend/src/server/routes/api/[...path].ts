@@ -1,4 +1,5 @@
-import { defineEventHandler, getCookie, getRequestURL, proxyRequest } from 'h3';
+import { defineEventHandler, EventHandlerRequest, getCookie,
+  getRequestURL, H3Event, proxyRequest } from 'h3';
 import { Buffer } from 'node:buffer';
 
 async function readNodeStream(req: any): Promise<string> {
@@ -12,52 +13,53 @@ async function readNodeStream(req: any): Promise<string> {
   return Buffer.concat(chunks).toString('utf-8');
 }
 
-export default defineEventHandler(async (event) => {
-  const rawBackendUrl = process.env['BACKEND_URL'] || 'http://backend:8080';
-  const backendUrl = rawBackendUrl.replace(/\/+$/, '');
-  const token = getCookie(event, 'accessToken');
+export default defineEventHandler(
+  async (event: H3Event<EventHandlerRequest>): Promise<any> => {
+    const rawBackendUrl: string = process.env['BACKEND_URL'] || 'http://backend:8080';
+    const backendUrl: string = rawBackendUrl.replace(/\/+$/, '');
+    const token: string | undefined = getCookie(event, 'accessToken');
 
-  const url = getRequestURL(event);
-  const targetPath = url.pathname.replace(/^\/api/, '');
-  const targetUrl = `${backendUrl}${targetPath}${url.search}`;
+    const url: URL = getRequestURL(event);
+    const targetPath: string = url.pathname.replace(/^\/api/, '');
+    const targetUrl: string = `${backendUrl}${targetPath}${url.search}`;
 
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  if (event.node.req.method?.toUpperCase() === 'QUERY') {
-    const rawBody = await readNodeStream(event.node.req);
-
-    const queryHeaders: Record<string, string> = {
-      ...headers,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-
-    const backendRes = await fetch(targetUrl, {
-      method: 'QUERY',
-      headers: queryHeaders,
-      body: rawBody && rawBody.trim().length > 0 ? rawBody : '{}',
-    });
-
-    event.node.res.statusCode = backendRes.status;
-
-    backendRes.headers.forEach((val, key) => {
-      if (!['content-encoding', 'content-length'].includes(key.toLowerCase())) {
-        event.node.res.setHeader(key, val);
-      }
-    });
-
-    const text = await backendRes.text();
-    try {
-      return JSON.parse(text);
-    } catch {
-      return text;
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
-  }
 
-  return proxyRequest(event, targetUrl, {
-    headers,
+    if (event.node.req.method?.toUpperCase() === 'QUERY') {
+      const rawBody: string = await readNodeStream(event.node.req);
+
+      const queryHeaders: Record<string, string> = {
+        ...headers,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+
+      const backendRes: Response = await fetch(targetUrl, {
+        method: 'QUERY',
+        headers: queryHeaders,
+        body: rawBody && rawBody.trim().length > 0 ? rawBody : '{}',
+      });
+
+      event.node.res.statusCode = backendRes.status;
+
+      backendRes.headers.forEach((val: string, key: string): void => {
+        if (!['content-encoding', 'content-length'].includes(key.toLowerCase())) {
+          event.node.res.setHeader(key, val);
+        }
+      });
+
+      const text: string = await backendRes.text();
+      try {
+        return JSON.parse(text);
+      } catch {
+        return text;
+      }
+    }
+
+    return proxyRequest(event, targetUrl, {
+      headers,
+    });
   });
-});

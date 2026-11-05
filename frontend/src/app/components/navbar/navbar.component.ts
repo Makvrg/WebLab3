@@ -26,7 +26,7 @@ export class NavbarComponent {
     computed<Role | null>(() => this.userContextService.user()?.role ?? null);
   readonly isLoggingOut: WritableSignal<boolean> = signal<boolean>(false);
 
-  private readonly currentUrl = toSignal(
+  private readonly currentUrl: Signal<any> = toSignal(
     this.router.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd),
       map((e) => e.urlAfterRedirects)
@@ -34,7 +34,7 @@ export class NavbarComponent {
     { initialValue: this.router.url }
   );
 
-  readonly isAuthPage = computed(() => {
+  readonly isAuthPage: Signal<any> = computed(() => {
     const url = this.currentUrl();
     return url.includes('/login') || url.includes('/register');
   });

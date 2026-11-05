@@ -1,18 +1,19 @@
-import { Injectable, signal, computed, Signal } from '@angular/core';
+import {Injectable, signal, computed, Signal, WritableSignal} from '@angular/core';
 import { UserContext } from './user-context.model';
 
 @Injectable({ providedIn: 'root' })
 export class UserContextService {
-  private readonly _user = signal<UserContext | null>(this.getInitialUser());
+  private readonly _user: WritableSignal<UserContext | null> =
+    signal<UserContext | null>(this.getInitialUser());
 
   readonly user: Signal<UserContext | null> = this._user.asReadonly();
 
-  readonly isAuthenticated: Signal<boolean> = computed(() => {
-    const u = this._user();
+  readonly isAuthenticated: Signal<boolean> = computed((): boolean => {
+    const u: UserContext | null = this._user();
     return !!(u && u.login && u.role);
   });
 
-  readonly isAdmin: Signal<boolean> = computed(() => {
+  readonly isAdmin: Signal<boolean> = computed((): boolean => {
     return this._user()?.role === 'ADMIN';
   });
 
@@ -35,7 +36,7 @@ export class UserContextService {
     if (typeof window === 'undefined') {
       return null;
     }
-    const saved = localStorage.getItem('userContext');
+    const saved: string | null = localStorage.getItem('userContext');
     if (!saved) return null;
     try {
       return JSON.parse(saved);

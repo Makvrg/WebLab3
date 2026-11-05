@@ -11,12 +11,12 @@ interface AuthResponse {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly http = inject(HttpClient);
-  private readonly userContextService = inject(UserContextService);
+  private readonly http: HttpClient = inject(HttpClient);
+  private readonly userContextService: UserContextService = inject(UserContextService);
 
   login(login: string, password: string): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${AUTH_URL}/login`, { login, password }).pipe(
-      tap((res) => this.userContextService.setUser(res.user))
+      tap((res: AuthResponse): void => this.userContextService.setUser(res.user))
     );
   }
 
@@ -26,7 +26,7 @@ export class AuthService {
 
   refreshTokens(): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${AUTH_URL}/refresh`, {}).pipe(
-      tap((res) => this.userContextService.setUser(res.user))
+      tap((res: AuthResponse): void => this.userContextService.setUser(res.user))
     );
   }
 

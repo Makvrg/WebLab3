@@ -1,8 +1,6 @@
 import {
-  Component,
-  DestroyRef,
-  inject,
-  signal, WritableSignal,
+  Component, DestroyRef,
+  inject, signal, WritableSignal,
 } from '@angular/core';
 
 import {

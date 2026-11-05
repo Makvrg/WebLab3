@@ -1,4 +1,5 @@
-import { Component, DestroyRef, OnInit, WritableSignal, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit,
+  WritableSignal, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -56,7 +57,7 @@ export default class ProfilePage implements OnInit {
 
     timer(0, 5000)
       .pipe(
-        exhaustMap((tick) => {
+        exhaustMap((tick: number) => {
           const isPolling: boolean = tick > 0;
 
           return this.userService.getUser(context.userId).pipe(
@@ -80,7 +81,7 @@ export default class ProfilePage implements OnInit {
               return of(null);
             }),
 
-            tap((profile) => {
+            tap((profile: ProfileView | null) => {
               if (profile !== null) {
                 this.user.set(profile);
                 this.errorMessage.set(null);

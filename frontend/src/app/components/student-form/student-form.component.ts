@@ -7,6 +7,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs/operators';
 import { StudentService } from '../../services/student.service';
 import { Student } from '../../entity/Student';
+import {Observable} from 'rxjs';
 
 @Component({
   selector: 'app-student-form',
@@ -84,7 +85,7 @@ export default class StudentFormComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
-        next: (student) => {
+        next: (student: Student) => {
           this.studentForm.patchValue({
             fio: student.fio,
             stGroup: student.stGroup,
@@ -130,7 +131,7 @@ export default class StudentFormComponent implements OnInit {
       val.notes ? val.notes.trim() : ''
     );
 
-    const action$ =
+    const action$: Observable<unknown> =
       this.isEditMode() && this.editingIsuId !== null
         ? this.studentService.updateStudent(this.editingIsuId, payload)
         : this.studentService.addStudent(payload);
@@ -156,7 +157,6 @@ export default class StudentFormComponent implements OnInit {
       return;
     }
 
-    // 409 Conflict: студент с таким ИСУ уже зарегистрирован
     if (err.status === 409) {
       const msg = err.error?.message || 'Студент с таким номером ИСУ уже существует.';
       this.errorMessage.set(msg);
@@ -164,7 +164,6 @@ export default class StudentFormComponent implements OnInit {
       return;
     }
 
-    // 400 или 422: ошибки валидации полей от Spring Boot
     if (err.status === 400 || err.status === 422) {
       const errorsObj: Record<string, string> = {};
 
