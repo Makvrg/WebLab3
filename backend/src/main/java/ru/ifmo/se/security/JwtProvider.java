@@ -31,7 +31,7 @@ public class JwtProvider {
     private final Jsonb jsonb = JsonbBuilder.create();
 
     public JwtProvider() {
-        this.secretKey = "super-secret-jwt-key-for-weblab3-itmo-2026";
+        this.secretKey = System.getenv("JWT_SECRET");
     }
 
     @Getter

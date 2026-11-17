@@ -1,9 +1,15 @@
 services:
+  nginx:
+    build: ./nginx
+    ports:
+      - "8080:80"
+    depends_on:
+      - frontend
+      - backend
+      - node-backend
 
   frontend:
     build: ./frontend
-    ports:
-      - "63342:3000"
     environment:
       - BACKEND_URL=${BACKEND_URL}
     depends_on:
@@ -12,17 +18,33 @@ services:
   backend:
     build:
       context: backend
-    ports:
-      - "5000:8080"
     environment:
       DB_HOST: postgres
       DB_PORT: ${POSTGRES_PORT}
       DB_NAME: ${POSTGRES_DB}
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      NODE_BACKEND_URL: http://node-backend:4000
+      CORS_ORIGIN: ${CORS_ORIGIN}
     depends_on:
       postgres:
         condition: service_healthy
+
+  node-backend:
+    build: ./node-backend
+    environment:
+      PORT: 4000
+      JAVA_BACKEND_URL: http://backend:8080
+      AUDIT_FILE_PATH: /app/data/audit.ndjson
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+    volumes:
+      - node_audit_data:/app/data
+    depends_on:
+      - backend
 
   postgres:
     image: postgres:17
@@ -30,8 +52,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "${POSTGRES_PORT}:5432"
+    # Если понадобится подключиться к БД с компьютера через DataGrip/pgAdmin,
+    # можно временно раскомментировать строку ниже:
+    # ports:
+    #   - "127.0.0.1:${POSTGRES_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/src/main/resources/db/migrations:/docker-entrypoint-initdb.d:ro
@@ -43,3 +67,4 @@ services:
 
 volumes:
   postgres_data:
+  node_audit_data:

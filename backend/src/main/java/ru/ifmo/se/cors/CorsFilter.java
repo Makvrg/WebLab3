@@ -29,7 +29,7 @@ public class CorsFilter implements ContainerRequestFilter, ContainerResponseFilt
 
         responseContext.getHeaders().add(
                 "Access-Control-Allow-Origin",
-                "http://localhost:63342"
+                System.getenv("CORS_ORIGIN")
         );
 
         responseContext.getHeaders().add(
