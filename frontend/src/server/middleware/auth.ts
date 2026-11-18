@@ -23,7 +23,7 @@ export default defineEventHandler(
     if (token) {
       try {
         const payloadBase64: string = token.split('.')[1];
-        const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf-8'));
+        const payload = JSON.parse(Buffer.from(payloadBase64, 'base64url').toString('utf-8'));
         if (payload.exp && payload.exp * 1000 > Date.now()) {
           role = payload.role;
         }
@@ -58,8 +58,8 @@ export default defineEventHandler(
       return;
     }
 
-    // Пользователь с ролью USER на административных маршрутах
-    if (isAuth && role !== 'ADMIN' && isAdminOnlyPage) {
+    // Пользователь с подтверждённой ролью USER на административных маршрутах
+    if (isAuth && role !== null && role !== 'ADMIN' && isAdminOnlyPage) {
       await sendRedirect(event, '/students', 302);
       return;
     }

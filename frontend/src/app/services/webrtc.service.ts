@@ -9,13 +9,14 @@ import {
   signal,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subject, firstValueFrom } from 'rxjs';
 import {
   CsvProgressEvent,
   StudentRealtimeEvent,
   WebRtcConnectionStatus,
 } from '../entity/RealtimeEvents';
 import { RT_URL } from './api.constants';
+import { AuthService } from './auth.service';
 
 interface SignalWelcomeMessage {
   type: 'welcome';
@@ -64,6 +65,7 @@ const MAX_RECONNECT_DELAY_MS = 15_000;
 export class WebRtcService implements OnDestroy {
   private readonly platformId: Object = inject(PLATFORM_ID);
   private readonly ngZone: NgZone = inject(NgZone);
+  private readonly authService: AuthService = inject(AuthService);
   private readonly isBrowser: boolean = isPlatformBrowser(this.platformId);
 
   private readonly _status: WritableSignal<WebRtcConnectionStatus> =
@@ -134,6 +136,10 @@ export class WebRtcService implements OnDestroy {
   }
 
   private openSignalingSocket(): void {
+    if (this.manuallyDisconnected) {
+      return;
+    }
+
     this.cleanupPeerResources();
     this.cleanupSocket();
 
@@ -370,7 +376,6 @@ export class WebRtcService implements OnDestroy {
     } catch {
       this.handleConnectionFailure(generation);
     }
-
   }
 
   private async flushPendingCandidates(generation: number): Promise<void> {
@@ -460,10 +465,29 @@ export class WebRtcService implements OnDestroy {
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      if (!this.manuallyDisconnected) {
-        this.openSignalingSocket();
-      }
+      void this.attemptReconnect();
     }, delay);
+  }
+
+  private async attemptReconnect(): Promise<void> {
+    if (this.manuallyDisconnected) {
+      return;
+    }
+
+    if (this.reconnectAttempts > 0) {
+      try {
+        await firstValueFrom(this.authService.refreshTokens());
+      } catch {
+        this.disconnect();
+        return;
+      }
+    }
+
+    if (this.manuallyDisconnected) {
+      return;
+    }
+
+    this.openSignalingSocket();
   }
 
   private cleanupPeerResources(): void {

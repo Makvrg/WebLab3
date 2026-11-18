@@ -12,7 +12,7 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule, DatePipe, isPlatformBrowser } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -29,6 +29,7 @@ import {
 } from 'rxjs/operators';
 import { AuditService } from '../../services/audit.service';
 import { WebRtcService } from '../../services/webrtc.service';
+import { UserContextService } from '../../user-context/user-context.service';
 import {
   AuditAction,
   AuditEvent,
@@ -73,6 +74,8 @@ const STUDENT_FIELD_LABELS: ReadonlyArray<{ key: string; label: string }> = [
 export default class AuditPage implements OnInit {
   private readonly auditService: AuditService = inject(AuditService);
   private readonly webRtcService: WebRtcService = inject(WebRtcService);
+  private readonly userContext: UserContextService = inject(UserContextService);
+  private readonly router: Router = inject(Router);
   private readonly fb: FormBuilder = inject(FormBuilder);
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
   private readonly platformId: Object = inject(PLATFORM_ID);
@@ -103,6 +106,11 @@ export default class AuditPage implements OnInit {
 
   ngOnInit(): void {
     const isBrowser: boolean = isPlatformBrowser(this.platformId);
+    if (isBrowser && !this.userContext.isAdmin()) {
+      void this.router.navigate(['/students']);
+      return;
+    }
+
     let initialHydrated: boolean = false;
 
     if (isBrowser && this.transferState.hasKey(AUDIT_STATE_KEY)) {
@@ -356,7 +364,6 @@ export default class AuditPage implements OnInit {
 
     const normalized: Record<string, unknown> = { ...snapshot };
 
-    // В Java StudentDto используется stGroup, а в сущности Student — group
     if (normalized['stGroup'] === undefined && normalized['group'] !== undefined) {
       normalized['stGroup'] = normalized['group'];
     }

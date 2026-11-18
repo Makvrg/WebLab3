@@ -43,7 +43,10 @@ public class OutboxRelayScheduler {
             thread.setDaemon(true);
             return thread;
         });
-        this.nodeUrl = System.getenv("NODE_BACKEND_URL");
+        String rawNodeUrl = System.getenv("NODE_BACKEND_URL");
+        this.nodeUrl = (rawNodeUrl == null || rawNodeUrl.isBlank())
+                ? "http://node-backend:4000"
+                : rawNodeUrl.trim().replaceAll("/+$", "");
         this.internalSecret = System.getenv("INTERNAL_API_SECRET");
     }
 
@@ -78,7 +81,7 @@ public class OutboxRelayScheduler {
                     .uri(URI.create(nodeUrl + "/internal/events"))
                     .timeout(Duration.ofSeconds(5))
                     .header("Content-Type", "application/json")
-                    .header("X-Internal-Secret", internalSecret)
+                    .header("X-Internal-Secret", internalSecret != null ? internalSecret : "")
                     .POST(HttpRequest.BodyPublishers.ofString(event.payload()))
                     .build();
 

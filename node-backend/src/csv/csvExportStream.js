@@ -48,13 +48,13 @@ function buildFilterParams(searchParams) {
 }
 
 async function* fetchStudentsGenerator(rawToken, filterParams) {
-    // Проверь в StudentService.java: если формула offset = (pageNumber - 1) * pageSize, поставь 1
+    const baseJavaUrl = (config.javaBackendUrl || 'http://backend:8080').replace(/\/+$/, '');
     let pageNumber = 1;
     const pageSize = 100;
     let previousFirstId = null;
 
     while (true) {
-        const url = new URL(`${config.javaBackendUrl}/students`);
+        const url = new URL(`${baseJavaUrl}/students`);
         for (const [key, val] of filterParams.entries()) {
             url.searchParams.set(key, val);
         }

@@ -13,7 +13,16 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, of, timer } from 'rxjs';
-import { catchError, exhaustMap, filter, finalize, map, tap } from 'rxjs/operators';
+import {
+  catchError,
+  debounceTime,
+  exhaustMap,
+  filter,
+  finalize,
+  map,
+  switchMap,
+  tap,
+} from 'rxjs/operators';
 import { StudentService } from '../../services/student.service';
 import { UserContextService } from '../../user-context/user-context.service';
 import { WebRtcService } from '../../services/webrtc.service';
@@ -58,7 +67,8 @@ export default class StudentDetailPage implements OnInit {
       this.webRtcService.studentEvents$
         .pipe(
           filter((event: StudentRealtimeEvent) => Number(event.isuId) === studentId),
-          exhaustMap((event: StudentRealtimeEvent) => {
+          debounceTime(200),
+          switchMap((event: StudentRealtimeEvent) => {
             this.studentService.invalidateCache();
 
             if (event.action === 'DELETE') {

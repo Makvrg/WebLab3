@@ -46,10 +46,15 @@ export async function appendAuditEvent(event) {
         return { duplicate: true };
     }
 
-    const line = JSON.stringify(event) + '\n';
-    await fsp.appendFile(config.auditFilePath, line, 'utf8');
-
     seenEventIds.add(event.eventId);
+    try {
+        const line = JSON.stringify(event) + '\n';
+        await fsp.appendFile(config.auditFilePath, line, 'utf8');
+    } catch (err) {
+        seenEventIds.delete(event.eventId);
+        throw err;
+    }
+
     records.push(event);
 
     appEvents.emit('audit:created', event);

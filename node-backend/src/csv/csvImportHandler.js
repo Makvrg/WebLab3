@@ -82,7 +82,8 @@ export async function handleCsvImport(req, res, searchParams) {
     let updated = 0;
     let failed = parsed.errors.length;
 
-    const javaStudentsUrl = `${config.javaBackendUrl}/students`;
+    const baseJavaUrl = (config.javaBackendUrl || 'http://backend:8080').replace(/\/+$/, '');
+    const javaStudentsUrl = `${baseJavaUrl}/students`;
     const authHeaders = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -131,8 +132,12 @@ export async function handleCsvImport(req, res, searchParams) {
                 let cleanMsg = `ошибка сохранения (код ${createRes.status})`;
                 try {
                     const jsonErr = JSON.parse(errText);
-                    if (jsonErr.message || jsonErr.error) {
-                        cleanMsg = jsonErr.message || jsonErr.error;
+                    const extractedMsg =
+                        jsonErr?.error?.message ||
+                        (typeof jsonErr?.error === 'string' ? jsonErr.error : null) ||
+                        (typeof jsonErr?.message === 'string' ? jsonErr.message : null);
+                    if (extractedMsg) {
+                        cleanMsg = extractedMsg;
                     }
                 } catch {
                 }

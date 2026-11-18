@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { RTCPeerConnection } from 'werift';
+import { config } from '../config.js';
 import {
     CHANNEL_TYPES,
     SIGNAL_TYPES,
@@ -74,14 +75,17 @@ export class PeerManager {
     }
 
     async #handleOffer(session, sdp) {
-        // При повторном offer корректно закрываем предыдущее WebRTC-соединение пира
         this.#cleanupPeerConnection(session);
         session.pendingCandidates = [];
         session.remoteDescriptionSet = false;
 
-        const pc = new RTCPeerConnection({
+        const rtcConfig = {
             iceServers: DEFAULT_ICE_SERVERS,
-        });
+            portRange: [config.webrtcPortMin, config.webrtcPortMax],
+            iceAdditionalHostAddresses: config.webrtcPublicIp ? [config.webrtcPublicIp] : [],
+        };
+
+        const pc = new RTCPeerConnection(rtcConfig);
         session.pc = pc;
 
         pc.ondatachannel = (event) => {
@@ -222,7 +226,17 @@ export class PeerManager {
                 return;
             }
             const raw = event?.data !== undefined ? event.data : event;
-            const text = Buffer.isBuffer(raw) ? raw.toString('utf8') : String(raw);
+
+            let text;
+            if (Buffer.isBuffer(raw)) {
+                text = raw.toString('utf8');
+            } else if (raw instanceof ArrayBuffer) {
+                text = Buffer.from(raw).toString('utf8');
+            } else if (ArrayBuffer.isView(raw)) {
+                text = Buffer.from(raw.buffer, raw.byteOffset, raw.byteLength).toString('utf8');
+            } else {
+                text = String(raw);
+            }
 
             try {
                 const parsed = JSON.parse(text);
@@ -230,7 +244,6 @@ export class PeerManager {
                     channel.send(JSON.stringify(createPongPayload(parsed.ts)));
                 }
             } catch {
-                // Игнорируем некорректные кадры от клиента
             }
         };
     }
@@ -310,7 +323,6 @@ export class PeerManager {
             const serialized = JSON.stringify(payload);
 
             for (const session of this.sessions.values()) {
-                // События мутации студентов отправляются строго авторизованным клиентам с ролью ADMIN
                 if (session.role !== 'ADMIN') {
                     continue;
                 }

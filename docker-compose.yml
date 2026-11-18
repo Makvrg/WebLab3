@@ -12,6 +12,7 @@ services:
     build: ./frontend
     environment:
       - BACKEND_URL=${BACKEND_URL}
+      - NODE_BACKEND_URL=${NODE_BACKEND_URL}
     depends_on:
       - backend
 
@@ -34,6 +35,8 @@ services:
 
   node-backend:
     build: ./node-backend
+    ports:
+      - "40000-40050:40000-40050/udp"
     environment:
       PORT: 4000
       JAVA_BACKEND_URL: ${BACKEND_URL}
@@ -41,6 +44,9 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN}
+      WEBRTC_PUBLIC_IP: ${WEBRTC_PUBLIC_IP:-127.0.0.1}
+      WEBRTC_PORT_MIN: 40000
+      WEBRTC_PORT_MAX: 40050
     volumes:
       - node_audit_data:/app/data
     depends_on:
@@ -52,8 +58,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    # Если понадобится подключиться к БД с компьютера через DataGrip/pgAdmin,
-    # можно временно раскомментировать строку ниже:
     ports:
       - "127.0.0.1:${POSTGRES_PORT}:5432"
     volumes:

@@ -216,7 +216,10 @@ export default class StudentListPage implements OnInit {
 
     if (isBrowser) {
       this.webRtcService.studentEvents$
-        .pipe(takeUntilDestroyed(this.destroyRef))
+        .pipe(
+          debounceTime(300),
+          takeUntilDestroyed(this.destroyRef)
+        )
         .subscribe(() => {
           this.studentService.invalidateCache();
         });
@@ -359,7 +362,6 @@ export default class StudentListPage implements OnInit {
         this.errorMessage.set(msg);
         return;
       } catch {
-        // Если ответ не JSON, используем стандартное сообщение
       }
     }
 
