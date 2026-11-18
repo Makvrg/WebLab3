@@ -1,58 +1,95 @@
 import http from 'node:http';
+import { config } from './config.js';
+import { readJsonBody, sendJson } from './http/httpUtils.js';
+import { authenticateRequest } from './security/jwtVerifier.js';
+import { initAuditStore, appendAuditEvent, getAuditEvents } from './audit/auditStore.js';
 import { appEvents } from './events.js';
+import { handleCsvExport } from './csv/csvExportStream.js';
+import { handleCsvImport } from './csv/csvImportHandler.js';
 import { attachSignalingServer } from './webrtc/wsServer.js';
 import { PeerManager } from './webrtc/peerManager.js';
-
-const PORT = Number(process.env.PORT) || 4000;
 
 const peerManager = new PeerManager();
 peerManager.bindAppEvents(appEvents);
 
-function sendJson(res, statusCode, body) {
-   const payload = JSON.stringify(body);
-   res.writeHead(statusCode, {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Content-Length': Buffer.byteLength(payload),
-   });
-   res.end(payload);
-}
+appEvents.on('audit:created', (event) => {
+   console.log(
+       `[Audit] Новое событие: ${event.action} | Студент: ${event.isuId} | Автор: ${event.actor?.login}`
+   );
+   appEvents.emit('student:changed', event);
+});
 
-/**
- * Точка расширения для HTTP-роутера (журнал аудита и импорт/экспорт CSV).
- */
-async function handleHttpRequest(req, res) {
-   const pathname = (req.url || '/').split('?')[0];
+const server = http.createServer(async (req, res) => {
+   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+   const { pathname, searchParams } = url;
 
-   if (req.method === 'GET' && (pathname === '/health' || pathname === '/api/rt/health')) {
-      sendJson(res, 200, {
-         status: 'ok',
-         activePeers: peerManager.size,
-      });
-      return;
-   }
-
-   sendJson(res, 404, {
-      error: {
-         code: 'NOT_FOUND',
-         message: `Маршрут ${req.method} ${pathname} не найден`,
-      },
-   });
-}
-
-const server = http.createServer((req, res) => {
-   handleHttpRequest(req, res).catch((err) => {
-      console.error('[HTTP] Необработанная ошибка запроса:', err);
-      if (!res.headersSent) {
-         sendJson(res, 500, {
-            error: {
-               code: 'INTERNAL_SERVER_ERROR',
-               message: 'Внутренняя ошибка сервера',
-            },
+   try {
+      if (req.method === 'GET' && (pathname === '/health' || pathname === '/api/rt/health')) {
+         return sendJson(res, 200, {
+            status: 'ok',
+            service: 'node-backend',
+            activePeers: peerManager.size,
          });
-      } else {
-         res.end();
       }
-   });
+
+      if (req.method === 'POST' && pathname === '/internal/events') {
+         const secret = req.headers['x-internal-secret'];
+         if (secret !== config.internalApiSecret) {
+            return sendJson(res, 403, { error: 'Forbidden: invalid internal secret' });
+         }
+
+         const event = await readJsonBody(req);
+         const result = await appendAuditEvent(event);
+         return sendJson(res, 200, { status: 'accepted', ...result });
+      }
+
+      if (req.method === 'GET' && pathname === '/api/rt/audit') {
+         const user = authenticateRequest(req);
+         if (!user) {
+            return sendJson(res, 401, { error: 'Unauthorized' });
+         }
+         if (user.role !== 'ADMIN') {
+            return sendJson(res, 403, { error: 'Forbidden: ADMIN role required' });
+         }
+
+         const page = Math.max(0, Number(searchParams.get('page') || 0));
+         const rawSize = searchParams.get('size') ?? searchParams.get('pageSize') ?? 20;
+         const size = Math.min(100, Math.max(1, Number(rawSize)));
+
+         const result = getAuditEvents({
+            page,
+            size,
+            action: searchParams.get('action') || undefined,
+            source: searchParams.get('source') || undefined,
+            isuId: searchParams.get('isuId') || undefined,
+            actorLogin: searchParams.get('actorLogin') || undefined,
+         });
+
+         return sendJson(res, 200, result);
+      }
+
+      if (req.method === 'GET' && pathname === '/api/rt/csv/export') {
+         return await handleCsvExport(req, res, searchParams);
+      }
+
+      if (req.method === 'POST' && pathname === '/api/rt/csv/import') {
+         return await handleCsvImport(req, res, searchParams);
+      }
+
+      return sendJson(res, 404, { error: 'Not Found', path: pathname });
+   } catch (err) {
+      if (err.message === 'PAYLOAD_TOO_LARGE') {
+         return sendJson(res, 413, { error: 'Payload too large' });
+      }
+      if (err.message === 'INVALID_JSON' || err.message === 'INVALID_EVENT') {
+         return sendJson(res, 400, { error: err.message });
+      }
+      console.error('[HTTP Error]', err);
+      if (!res.headersSent) {
+         return sendJson(res, 500, { error: 'Internal Server Error' });
+      }
+      res.end();
+   }
 });
 
 attachSignalingServer(server, {
@@ -110,6 +147,14 @@ function shutdown(signal) {
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-server.listen(PORT, () => {
-   console.log(`node-backend listening on port ${PORT}`);
+async function bootstrap() {
+   await initAuditStore();
+   server.listen(config.port, '0.0.0.0', () => {
+      console.log(`node-backend listening on 0.0.0.0:${config.port}`);
+   });
+}
+
+bootstrap().catch((err) => {
+   console.error('[System] Критическая ошибка при запуске node-backend:', err);
+   process.exit(1);
 });

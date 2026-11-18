@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { config } from '../config.js';
 
 export class AuthError extends Error {
     constructor(message, statusCode = 401) {
@@ -77,7 +78,7 @@ export function verifyAccessToken(token) {
         throw new AuthError('Токен аутентификации отсутствует', 401);
     }
 
-    const secret = process.env.JWT_SECRET;
+    const secret = config?.jwtSecret || process.env.JWT_SECRET;
     if (!secret || typeof secret !== 'string') {
         throw new AuthError('JWT_SECRET не задан в переменных окружения', 500);
     }
@@ -121,7 +122,8 @@ export function verifyAccessToken(token) {
         throw new AuthError('Некорректный userId в токене', 401);
     }
 
-    if (typeof payload.login !== 'string' || payload.login.trim().length === 0) {
+    const resolvedLogin = typeof payload.login === 'string' ? payload.login : payload.sub;
+    if (typeof resolvedLogin !== 'string' || resolvedLogin.trim().length === 0) {
         throw new AuthError('Некорректный login в токене', 401);
     }
 
@@ -130,9 +132,27 @@ export function verifyAccessToken(token) {
     }
 
     return {
+        rawToken: token,
         userId: payload.userId,
-        login: payload.login,
+        login: resolvedLogin,
         role: payload.role,
         exp: payload.exp,
     };
+}
+
+export function verifyJwt(token) {
+    if (!token) {
+        return null;
+    }
+
+    try {
+        return verifyAccessToken(token);
+    } catch {
+        return null;
+    }
+}
+
+export function authenticateRequest(req) {
+    const token = extractTokenFromRequest(req);
+    return verifyJwt(token);
 }

@@ -2,6 +2,7 @@ package ru.ifmo.se.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.json.bind.JsonbConfig;
 import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -64,7 +65,9 @@ public class StudentService {
         event.put("before", beforeState);
         event.put("after", afterState);
 
-        try (jakarta.json.bind.Jsonb jsonb = jakarta.json.bind.JsonbBuilder.create()) {
+        JsonbConfig jsonbConfig = new jakarta.json.bind.JsonbConfig().withNullValues(true);
+        try (jakarta.json.bind.Jsonb jsonb =
+                     jakarta.json.bind.JsonbBuilder.create(jsonbConfig)) {
             String jsonPayload = jsonb.toJson(event);
             outboxRepository.saveEvent(eventId, action, jsonPayload);
         } catch (Exception e) {
