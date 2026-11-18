@@ -4,6 +4,8 @@ import { readJsonBody, sendJson } from './http/httpUtils.js';
 import { authenticateRequest } from './security/jwtVerifier.js';
 import { initAuditStore, appendAuditEvent, getAuditEvents } from './audit/auditStore.js';
 import { appEvents } from './events.js';
+import { handleCsvExport } from './csv/csvExportStream.js';
+import { handleCsvImport } from './csv/csvImportHandler.js';
 
 appEvents.on('audit:created', (event) => {
    console.log(`[Audit] Новое событие: ${event.action} | Студент: ${event.isuId} | Автор: ${event.actor?.login}`);
@@ -53,7 +55,13 @@ const server = http.createServer(async (req, res) => {
          return sendJson(res, 200, result);
       }
 
-      // Сюда в Блоках 4 и 5 мы добавим маршруты /api/rt/csv/export и /api/rt/csv/import
+      if (req.method === 'GET' && pathname === '/api/rt/csv/export') {
+         return await handleCsvExport(req, res, searchParams);
+      }
+
+      if (req.method === 'POST' && pathname === '/api/rt/csv/import') {
+         return await handleCsvImport(req, res, searchParams);
+      }
 
       return sendJson(res, 404, { error: 'Not Found', path: pathname });
    } catch (err) {
@@ -67,6 +75,8 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 500, { error: 'Internal Server Error' });
    }
 });
+
+// TODO сюда нужно подключить систему с WebRTC
 
 async function bootstrap() {
    await initAuditStore();
