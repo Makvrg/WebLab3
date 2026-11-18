@@ -27,6 +27,10 @@ export class AuditService {
       params = params.set('action', filters.action.trim());
     }
 
+    if (filters.source && filters.source.trim().length > 0) {
+      params = params.set('source', filters.source.trim());
+    }
+
     if (filters.isuId !== undefined && Number.isInteger(filters.isuId) && filters.isuId > 0) {
       params = params.set('isuId', String(filters.isuId));
     }

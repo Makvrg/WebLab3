@@ -333,7 +333,6 @@ export default class StudentListPage implements OnInit {
       .subscribe({
         next: () => {
           this.flashSuccess('Студент успешно удален');
-          this.reload$.next();
         },
         error: (err: HttpErrorResponse) => {
           const msg =

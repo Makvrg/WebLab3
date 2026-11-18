@@ -9,5 +9,5 @@ export const config = {
     corsOrigin: process.env.CORS_ORIGIN,
     webrtcPublicIp: process.env.WEBRTC_PUBLIC_IP || '',
     webrtcPortMin: Number(process.env.WEBRTC_PORT_MIN || 40000),
-    webrtcPortMax: Number(process.env.WEBRTC_PORT_MAX || 40050),
+    webrtcPortMax: Number(process.env.WEBRTC_PORT_MAX || 40009),
 };

@@ -128,6 +128,7 @@ export class StudentService {
 
   invalidateCache(): void {
     this.listCache.clear();
+    this.studentCache.clear();
     this.cacheInvalidated$.next();
   }
 }

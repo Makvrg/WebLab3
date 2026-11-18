@@ -30,6 +30,7 @@ export interface AuditFilter {
   page?: number;
   pageSize?: number;
   action?: string;
+  source?: string;
   isuId?: number;
   actorLogin?: string;
 }

@@ -36,7 +36,7 @@ services:
   node-backend:
     build: ./node-backend
     ports:
-      - "40000-40050:40000-40050/udp"
+      - "40000-40009:40000-40009/udp"
     environment:
       PORT: 4000
       JAVA_BACKEND_URL: ${BACKEND_URL}
@@ -46,7 +46,7 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN}
       WEBRTC_PUBLIC_IP: ${WEBRTC_PUBLIC_IP:-127.0.0.1}
       WEBRTC_PORT_MIN: 40000
-      WEBRTC_PORT_MAX: 40050
+      WEBRTC_PORT_MAX: 40009
     volumes:
       - node_audit_data:/app/data
     depends_on:

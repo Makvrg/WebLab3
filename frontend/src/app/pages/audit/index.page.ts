@@ -40,6 +40,7 @@ import { StudentRealtimeEvent } from '../../entity/RealtimeEvents';
 
 interface NormalizedAuditFilter {
   action?: string;
+  source?: string;
   isuId?: number;
   actorLogin?: string;
 }
@@ -85,6 +86,7 @@ export default class AuditPage implements OnInit {
 
   readonly filterForm = this.fb.group({
     action: [''],
+    source: [''],
     isuId: [''],
     actorLogin: [''],
   });
@@ -211,6 +213,7 @@ export default class AuditPage implements OnInit {
   onResetFilters(): void {
     this.filterForm.reset({
       action: '',
+      source: '',
       isuId: '',
       actorLogin: '',
     });
@@ -335,9 +338,13 @@ export default class AuditPage implements OnInit {
   }
 
   private matchesActiveFilters(rtEvent: StudentRealtimeEvent): boolean {
-    const { action, isuId, actorLogin } = this.activeFilters;
+    const { action, source, isuId, actorLogin } = this.activeFilters;
 
     if (action && rtEvent.action !== action) {
+      return false;
+    }
+
+    if (source && (rtEvent.source || 'UI') !== source) {
       return false;
     }
 
@@ -407,12 +414,14 @@ export default class AuditPage implements OnInit {
 
   private normalizeFilters(raw: {
     action?: string | null;
+    source?: string | null;
     isuId?: string | number | null;
     actorLogin?: string | null;
   }): NormalizedAuditFilter {
     const parsedIsu = raw.isuId !== null && raw.isuId !== '' ? Number(raw.isuId) : undefined;
     return {
       action: raw.action?.trim() || undefined,
+      source: raw.source?.trim() || undefined,
       isuId:
         parsedIsu !== undefined && Number.isInteger(parsedIsu) && parsedIsu > 0
           ? parsedIsu

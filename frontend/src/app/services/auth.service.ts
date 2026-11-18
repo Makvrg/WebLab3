@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, finalize, tap } from 'rxjs';
+import { Observable, finalize, shareReplay, tap } from 'rxjs';
 import { AUTH_URL } from './api.constants';
 import { UserContextService } from '../user-context/user-context.service';
 import { UserContext } from '../user-context/user-context.model';
@@ -14,6 +14,8 @@ export class AuthService {
   private readonly http: HttpClient = inject(HttpClient);
   private readonly userContextService: UserContextService = inject(UserContextService);
 
+  private refreshInProgress$: Observable<AuthResponse> | null = null;
+
   login(login: string, password: string): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${AUTH_URL}/login`, { login, password }).pipe(
       tap((res: AuthResponse): void => this.userContextService.setUser(res.user))
@@ -25,9 +27,19 @@ export class AuthService {
   }
 
   refreshTokens(): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${AUTH_URL}/refresh`, {}).pipe(
-      tap((res: AuthResponse): void => this.userContextService.setUser(res.user))
+    if (this.refreshInProgress$) {
+      return this.refreshInProgress$;
+    }
+
+    this.refreshInProgress$ = this.http.post<AuthResponse>(`${AUTH_URL}/refresh`, {}).pipe(
+      tap((res: AuthResponse): void => this.userContextService.setUser(res.user)),
+      finalize(() => {
+        this.refreshInProgress$ = null;
+      }),
+      shareReplay(1)
     );
+
+    return this.refreshInProgress$;
   }
 
   logout(): Observable<unknown> {

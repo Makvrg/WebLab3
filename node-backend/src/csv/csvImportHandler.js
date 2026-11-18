@@ -11,11 +11,11 @@ function extractCsvText(rawBody, contentType = '') {
         return rawBody;
     }
 
-    const boundary = boundaryMatch[1] || boundaryMatch[2];
+    const boundary = (boundaryMatch[1] || boundaryMatch[2]).trim();
     const parts = rawBody.split(`--${boundary}`);
 
     for (const part of parts) {
-        if (part.includes('Content-Disposition:') && part.includes('filename=')) {
+        if (/content-disposition:/i.test(part) && /filename=/i.test(part)) {
             const headerEnd = part.indexOf('\r\n\r\n');
             if (headerEnd !== -1) {
                 let content = part.slice(headerEnd + 4);

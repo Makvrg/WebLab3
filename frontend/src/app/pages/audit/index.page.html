@@ -29,7 +29,15 @@
         <option value="CREATE">Создание (CREATE)</option>
         <option value="UPDATE">Изменение (UPDATE)</option>
         <option value="DELETE">Удаление (DELETE)</option>
-        <option value="CSV_IMPORT">Импорт CSV (CSV_IMPORT)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="audit-filter-source">Источник</label>
+      <select id="audit-filter-source" formControlName="source">
+        <option value="">Все источники</option>
+        <option value="UI">UI</option>
+        <option value="CSV_IMPORT">CSV_IMPORT</option>
       </select>
     </div>
 
