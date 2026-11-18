@@ -5,38 +5,71 @@
 
   <div class="header-actions" id="header-actions">
     @if (isAuthenticated()) {
-      <a routerLink="/students"
-         routerLinkActive="nav-link-active"
-         [routerLinkActiveOptions]="{ exact: true }"
-         class="btn">
+      <a
+        routerLink="/students"
+        routerLinkActive="nav-link-active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="btn"
+      >
         Список студентов
       </a>
 
-      <a routerLink="/profile"
-         routerLinkActive="nav-link-active"
-         class="btn">
+      @if (userRole() === 'ADMIN') {
+        <a
+          routerLink="/audit"
+          routerLinkActive="nav-link-active"
+          class="btn"
+        >
+          Журнал действий
+        </a>
+      }
+
+      <a
+        routerLink="/profile"
+        routerLinkActive="nav-link-active"
+        class="btn"
+      >
         Профиль ({{ currentUserLogin() }})
-        <span class="role-badge"
-              [class.badge-admin]="userRole() === 'ADMIN'"
-              [class.badge-user]="userRole() === 'USER'">
+        <span
+          class="role-badge"
+          [class.badge-admin]="userRole() === 'ADMIN'"
+          [class.badge-user]="userRole() === 'USER'"
+        >
           {{ userRole() }}
         </span>
       </a>
 
-      <button type="button"
-              class="btn btn-danger"
-              id="logout-btn"
-              [disabled]="isLoggingOut()"
-              (click)="onLogout()">
+      <span
+        class="rt-indicator"
+        [class.rt-connected]="webrtcStatus() === 'connected'"
+        [class.rt-connecting]="webrtcStatus() === 'connecting'"
+        [class.rt-disconnected]="webrtcStatus() === 'disconnected'"
+        [title]="webrtcStatusLabel()"
+        role="status"
+        [attr.aria-label]="webrtcStatusLabel()"
+      >
+        <span class="rt-dot"></span>
+        <span class="rt-text">RT</span>
+      </span>
+
+      <button
+        type="button"
+        class="btn btn-danger"
+        id="logout-btn"
+        [disabled]="isLoggingOut()"
+        (click)="onLogout()"
+      >
         @if (isLoggingOut()) {
           <span class="spinner"></span>
         }
         Выйти
       </button>
     } @else if (!isAuthPage()) {
-      <a routerLink="/login"
-         routerLinkActive="nav-link-active"
-         class="btn btn-primary">
+      <a
+        routerLink="/login"
+        routerLinkActive="nav-link-active"
+        class="btn btn-primary"
+      >
         Войти в систему
       </a>
     }

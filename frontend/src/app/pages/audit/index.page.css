@@ -1,0 +1,248 @@
+.page-subheader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.subheader-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-panel {
+  background-color: var(--surface-color);
+  padding: 20px;
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 15px;
+  align-items: end;
+}
+
+.filter-grid .form-group {
+  margin-bottom: 0;
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border-color);
+}
+
+.table-responsive {
+  position: relative;
+  overflow-x: auto;
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+table#audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 680px;
+}
+
+table#audit-table > thead > tr > th,
+table#audit-table > tbody > tr > td {
+  padding: 14px 15px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+table#audit-table > thead > tr > th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+table#audit-table > tbody > tr:not(.diff-row):hover {
+  background-color: #f8f9fa;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.isu-link {
+  color: var(--primary-color);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.isu-link:hover {
+  text-decoration: underline;
+}
+
+.audit-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 12px;
+  letter-spacing: 0.3px;
+}
+
+.audit-badge-create {
+  background-color: var(--success-bg);
+  color: var(--success-text);
+}
+
+.audit-badge-update {
+  background-color: rgba(25, 70, 186, 0.12);
+  color: var(--primary-color);
+}
+
+.audit-badge-delete {
+  background-color: var(--error-bg);
+  color: var(--error-text);
+}
+
+.audit-badge-import {
+  background-color: rgba(111, 66, 193, 0.14);
+  color: #59359a;
+}
+
+.source-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  background-color: var(--bg-color);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.diff-row > td {
+  background-color: #f8fafc;
+  padding: 16px 20px;
+}
+
+.diff-panel {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--surface-color);
+  padding: 14px;
+}
+
+.diff-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.diff-table th,
+.diff-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  word-break: break-word;
+}
+
+.diff-table th {
+  background-color: #f8f9fa;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.diff-table tr:last-child td {
+  border-bottom: none;
+}
+
+.diff-field-label {
+  font-weight: 600;
+  width: 22%;
+  color: var(--text-main);
+}
+
+.diff-before,
+.diff-after {
+  width: 39%;
+}
+
+.diff-changed {
+  background-color: #fffbeb;
+}
+
+.diff-changed .diff-before {
+  color: var(--danger-color);
+  text-decoration: line-through;
+}
+
+.diff-changed .diff-after {
+  color: var(--success-text);
+  font-weight: 600;
+}
+
+.diff-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.empty-table-message {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-muted);
+}
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: var(--border-radius);
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  gap: 15px;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
+  .pagination {
+    flex-direction: column;
+  }
+}

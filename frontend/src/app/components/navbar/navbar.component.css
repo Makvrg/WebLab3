@@ -24,6 +24,59 @@ header.app-header {
   font-weight: 600;
 }
 
+.rt-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.rt-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #adb5bd;
+}
+
+.rt-connected {
+  color: var(--success-text);
+  border-color: rgba(40, 167, 69, 0.35);
+}
+
+.rt-connected .rt-dot {
+  background-color: var(--success-color);
+}
+
+.rt-connecting {
+  color: var(--warning-text);
+  border-color: rgba(255, 193, 7, 0.5);
+}
+
+.rt-connecting .rt-dot {
+  background-color: #f59f00;
+  animation: rt-pulse 1.2s infinite ease-in-out;
+}
+
+.rt-disconnected .rt-dot {
+  background-color: #adb5bd;
+}
+
+@keyframes rt-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
 @media (max-width: 768px) {
   header.app-header {
     flex-direction: column;

@@ -1,0 +1,190 @@
+<div class="page-subheader">
+  <h2>Журнал действий со студентами</h2>
+
+  <div class="subheader-actions">
+    <button
+      type="button"
+      class="btn"
+      [disabled]="isLoading()"
+      (click)="onRefresh()"
+    >
+      Обновить
+    </button>
+    <a routerLink="/students" class="btn">К списку студентов</a>
+  </div>
+</div>
+
+@if (errorMessage()) {
+  <div class="alert-box alert-danger" role="alert">
+    {{ errorMessage() }}
+  </div>
+}
+
+<form class="filter-panel" [formGroup]="filterForm" (ngSubmit)="onResetFilters()">
+  <div class="filter-grid">
+    <div class="form-group">
+      <label for="audit-filter-action">Тип действия</label>
+      <select id="audit-filter-action" formControlName="action">
+        <option value="">Все действия</option>
+        <option value="CREATE">Создание (CREATE)</option>
+        <option value="UPDATE">Изменение (UPDATE)</option>
+        <option value="DELETE">Удаление (DELETE)</option>
+        <option value="CSV_IMPORT">Импорт CSV (CSV_IMPORT)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="audit-filter-isu">ИСУ ID студента</label>
+      <input
+        type="number"
+        id="audit-filter-isu"
+        formControlName="isuId"
+        placeholder="Например: 123456"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="audit-filter-actor">Логин инициатора</label>
+      <input
+        type="search"
+        id="audit-filter-actor"
+        formControlName="actorLogin"
+        placeholder="Поиск по логину..."
+      />
+    </div>
+  </div>
+
+  <div class="filter-actions">
+    <button type="button" class="btn" (click)="onResetFilters()">
+      Сбросить фильтры
+    </button>
+  </div>
+</form>
+
+<div class="table-responsive">
+  @if (isLoading()) {
+    <div class="loading-overlay">
+      <div class="spinner spinner-primary"></div>
+    </div>
+  }
+
+  <table id="audit-table">
+    <thead>
+    <tr>
+      <th>Дата и время</th>
+      <th>Действие</th>
+      <th>Источник</th>
+      <th>ИСУ ID</th>
+      <th>Автор</th>
+      <th>Изменения</th>
+    </tr>
+    </thead>
+    <tbody>
+      @for (event of items(); track event.eventId) {
+        <tr>
+          <td class="nowrap">{{ event.timestamp | date:'dd.MM.yyyy HH:mm:ss' }}</td>
+          <td>
+            <span class="audit-badge" [ngClass]="getActionBadgeClass(event.action)">
+              {{ getActionLabel(event.action) }}
+            </span>
+          </td>
+          <td>
+            <span class="source-pill">{{ event.source }}</span>
+          </td>
+          <td>
+            @if (event.isuId > 0) {
+              <a [routerLink]="['/students', event.isuId]" class="isu-link">
+                {{ event.isuId }}
+              </a>
+            } @else {
+              <span>—</span>
+            }
+          </td>
+          <td>{{ event.actor?.login || '—' }}</td>
+          <td>
+            <button
+              type="button"
+              class="btn btn-small"
+              (click)="toggleDetails(event.eventId)"
+            >
+              {{ isExpanded(event.eventId) ? 'Скрыть' : 'Подробнее' }}
+            </button>
+          </td>
+        </tr>
+
+        @if (isExpanded(event.eventId)) {
+          <tr class="diff-row">
+            <td colspan="6">
+              <div class="diff-panel">
+                <div class="diff-meta">
+                  <span><strong>ID события:</strong> {{ event.eventId }}</span>
+                  @if (event.actor?.role) {
+                    <span><strong>Роль автора:</strong> {{ event.actor.role }}</span>
+                  }
+                </div>
+
+                @let diffs = buildFieldDiffs(event);
+                @if (diffs.length > 0) {
+                  <table class="diff-table">
+                    <thead>
+                    <tr>
+                      <th>Поле</th>
+                      <th>Было</th>
+                      <th>Стало</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                      @for (diff of diffs; track diff.key) {
+                        <tr [class.diff-changed]="diff.changed">
+                          <td class="diff-field-label">{{ diff.label }}</td>
+                          <td class="diff-before">{{ diff.beforeValue }}</td>
+                          <td class="diff-after">{{ diff.afterValue }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                } @else {
+                  <p class="diff-empty">Детальный снимок данных для этого события отсутствует.</p>
+                }
+              </div>
+            </td>
+          </tr>
+        }
+      } @empty {
+        <tr>
+          <td colspan="6" class="empty-table-message">
+            @if (isLoading()) {
+              Загрузка журнала действий...
+            } @else {
+              Записи в журнале действий не найдены
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+<div class="pagination">
+  <button
+    type="button"
+    class="btn"
+    [disabled]="currentPage() <= 1 || isLoading()"
+    (click)="onPageChange(currentPage() - 1)"
+  >
+    Предыдущая
+  </button>
+
+  <span class="pagination-info">
+    Страница {{ currentPage() }} из {{ totalPages() }} (всего записей: {{ total() }})
+  </span>
+
+  <button
+    type="button"
+    class="btn"
+    [disabled]="currentPage() >= totalPages() || isLoading()"
+    (click)="onPageChange(currentPage() + 1)"
+  >
+    Следующая
+  </button>
+</div>

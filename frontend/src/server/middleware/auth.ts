@@ -1,5 +1,11 @@
-import {defineEventHandler, getCookie, sendRedirect, getRequestURL,
-  EventHandlerRequest, H3Event} from 'h3';
+import {
+  defineEventHandler,
+  getCookie,
+  sendRedirect,
+  getRequestURL,
+  EventHandlerRequest,
+  H3Event,
+} from 'h3';
 import { Buffer } from 'node:buffer';
 
 export default defineEventHandler(
@@ -17,8 +23,7 @@ export default defineEventHandler(
     if (token) {
       try {
         const payloadBase64: string = token.split('.')[1];
-        const payload =
-          JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf-8'));
+        const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf-8'));
         if (payload.exp && payload.exp * 1000 > Date.now()) {
           role = payload.role;
         }
@@ -30,9 +35,11 @@ export default defineEventHandler(
     const refreshToken: string | undefined = getCookie(event, 'refreshToken');
     const isAuth: boolean = !!role || !!refreshToken;
     const isAuthPage: boolean = path === '/login' || path === '/register';
-    const isProtectedPage: boolean = path.startsWith('/students') || path === '/profile';
+    const isAuditPage: boolean = path === '/audit' || path.startsWith('/audit/');
+    const isProtectedPage: boolean =
+      path.startsWith('/students') || path === '/profile' || isAuditPage;
     const isAdminOnlyPage: boolean =
-      path === '/students/create' || /^\/students\/\d+\/edit$/.test(path);
+      path === '/students/create' || /^\/students\/\d+\/edit$/.test(path) || isAuditPage;
 
     if (path === '/') {
       await sendRedirect(event, isAuth ? '/students' : '/login', 302);
@@ -51,11 +58,12 @@ export default defineEventHandler(
       return;
     }
 
-    // Пользователь с ролью USER на страницах создания или редактирования
+    // Пользователь с ролью USER на административных маршрутах
     if (isAuth && role !== 'ADMIN' && isAdminOnlyPage) {
       await sendRedirect(event, '/students', 302);
       return;
     }
 
     return;
-  });
+  }
+);
