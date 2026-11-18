@@ -57,7 +57,7 @@ export async function appendAuditEvent(event) {
     return { duplicate: false };
 }
 
-export function getAuditEvents({ page = 0, size = 20, action, source, isuId, actorLogin }) {
+export function getAuditEvents({ page = 1, size = 20, action, source, isuId, actorLogin }) {
     let filtered = [...records].reverse();
 
     if (action) {
@@ -74,14 +74,15 @@ export function getAuditEvents({ page = 0, size = 20, action, source, isuId, act
         filtered = filtered.filter((r) => r.actor?.login?.toLowerCase().includes(q));
     }
 
+    const safePage = Math.max(1, Number(page) || 1);
     const totalElements = filtered.length;
-    const totalPages = Math.ceil(totalElements / size);
-    const start = page * size;
+    const totalPages = Math.max(1, Math.ceil(totalElements / size));
+    const start = (safePage - 1) * size;
     const content = filtered.slice(start, start + size);
 
     return {
         content,
-        page,
+        page: safePage,
         size,
         totalElements,
         totalPages,

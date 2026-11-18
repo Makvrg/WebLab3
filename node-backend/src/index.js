@@ -52,9 +52,14 @@ const server = http.createServer(async (req, res) => {
             return sendJson(res, 403, { error: 'Forbidden: ADMIN role required' });
          }
 
-         const page = Math.max(0, Number(searchParams.get('page') || 0));
-         const rawSize = searchParams.get('size') ?? searchParams.get('pageSize') ?? 20;
-         const size = Math.min(100, Math.max(1, Number(rawSize)));
+         const parsedPage = Number(searchParams.get('page'));
+         const page = Number.isFinite(parsedPage) ? Math.max(1, Math.trunc(parsedPage)) : 1;
+
+         const rawSize = searchParams.get('pageSize') ?? searchParams.get('size') ?? 20;
+         const parsedSize = Number(rawSize);
+         const size = Number.isFinite(parsedSize)
+             ? Math.min(100, Math.max(1, Math.trunc(parsedSize)))
+             : 20;
 
          const result = getAuditEvents({
             page,
@@ -65,7 +70,13 @@ const server = http.createServer(async (req, res) => {
             actorLogin: searchParams.get('actorLogin') || undefined,
          });
 
-         return sendJson(res, 200, result);
+         return sendJson(res, 200, {
+            items: result.content,
+            total: result.totalElements,
+            page: result.page,
+            pageSize: result.size,
+            totalPages: result.totalPages,
+         });
       }
 
       if (req.method === 'GET' && pathname === '/api/rt/csv/export') {

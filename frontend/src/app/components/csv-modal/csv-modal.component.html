@@ -22,7 +22,7 @@
       <div class="csv-guide-box">
         <p class="guide-title">Требования к формату файла:</p>
         <ul class="guide-list">
-          <li>Кодировка: <strong>UTF-8</strong>, разделитель колонок — запятая (<code>,</code>).</li>
+          <li>Кодировка: <strong>UTF-8</strong>, разделитель колонок — запятая (<code>,</code>) или точка с запятой (<code>;</code>), размер до 10 МБ.</li>
           <li>
             Заголовки колонок:
             <code class="headers-code">isuId,fio,stGroup,dormitoryNumber,room,dateOfPlacement,isNotRussian,notes</code>
@@ -85,36 +85,41 @@
         </div>
       }
 
+      @if (status() === 'UPLOADING') {
+        <div class="progress-section">
+          <div class="progress-header">
+            <span class="progress-status-label">Загрузка и обработка записей...</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill progress-fill-indeterminate"></div>
+          </div>
+        </div>
+      }
+
       @if (jobResult(); as result) {
         <div class="progress-section">
           <div class="progress-header">
-            <span class="progress-status-label">
-              @switch (status()) {
-                @case ('PROCESSING') { Обработка записей... }
-                @case ('COMPLETED') { Импорт завершён }
-                @case ('FAILED') { Импорт остановлен с ошибкой }
-              }
-            </span>
+            <span class="progress-status-label">Импорт завершён</span>
             <span class="progress-percent">{{ progressPercent() }}%</span>
           </div>
 
-          <div class="progress-track" role="progressbar" [attr.aria-valuenow]="progressPercent()" aria-valuemin="0" aria-valuemax="100">
+          <div
+            class="progress-track"
+            role="progressbar"
+            [attr.aria-valuenow]="progressPercent()"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
             <div
-              class="progress-fill"
-              [class.progress-fill-completed]="status() === 'COMPLETED'"
-              [class.progress-fill-failed]="status() === 'FAILED'"
+              class="progress-fill progress-fill-completed"
               [style.width.%]="progressPercent()"
             ></div>
           </div>
 
           <div class="stats-grid">
             <div class="stat-item">
-              <span class="stat-label">Всего</span>
+              <span class="stat-label">Всего строк</span>
               <span class="stat-value">{{ result.total }}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Обработано</span>
-              <span class="stat-value">{{ result.processed }}</span>
             </div>
             <div class="stat-item stat-created">
               <span class="stat-label">Сохранено</span>
@@ -143,7 +148,7 @@
               <tbody>
                 @for (err of skippedErrors(); track $index) {
                   <tr>
-                    <td>{{ err.row }}</td>
+                    <td>{{ err.row > 0 ? err.row : '—' }}</td>
                     <td>{{ err.isuId || '—' }}</td>
                     <td>{{ err.reason }}</td>
                   </tr>
@@ -184,7 +189,7 @@
         >
           @if (status() === 'UPLOADING') {
             <span class="spinner"></span>
-            <span>Загрузка...</span>
+            <span>Обработка...</span>
           } @else {
             <span>Начать импорт</span>
           }

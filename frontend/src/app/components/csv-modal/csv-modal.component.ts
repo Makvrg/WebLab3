@@ -14,26 +14,18 @@ import {
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, Subscription, fromEvent, of, timer } from 'rxjs';
-import {
-  catchError,
-  exhaustMap,
-  filter,
-  finalize,
-  takeUntil,
-  tap,
-} from 'rxjs/operators';
+import { fromEvent } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { CsvService } from '../../services/csv.service';
-import { WebRtcService } from '../../services/webrtc.service';
 import {
+  CsvImportResponse,
   CsvJobResult,
   CsvJobStatus,
   CsvSkippedRowError,
 } from '../../entity/CsvJob';
-import { CsvProgressEvent } from '../../entity/RealtimeEvents';
 import { getErrorMessage } from '../../utils/error.util';
 
-const MAX_CSV_FILE_BYTES = 50 * 1024 * 1024; // 50 МБ (соответствует client_max_body_size в Nginx)
+const MAX_CSV_FILE_BYTES = 10 * 1024 * 1024; // 10 МБ (соответствует MAX_CSV_BYTES в node-backend)
 
 @Component({
   selector: 'app-csv-modal',
@@ -44,7 +36,6 @@ const MAX_CSV_FILE_BYTES = 50 * 1024 * 1024; // 50 МБ (соответству�
 })
 export class CsvModalComponent implements OnInit {
   private readonly csvService: CsvService = inject(CsvService);
-  private readonly webRtcService: WebRtcService = inject(WebRtcService);
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
   private readonly platformId: Object = inject(PLATFORM_ID);
 
@@ -59,38 +50,24 @@ export class CsvModalComponent implements OnInit {
 
   readonly canClose: Signal<boolean> = computed(() => this.status() !== 'UPLOADING');
 
-  readonly canStartImport: Signal<boolean> = computed(() => {
-    const currentStatus = this.status();
-    return (
-      this.selectedFile() !== null &&
-      currentStatus !== 'UPLOADING' &&
-      currentStatus !== 'PROCESSING'
-    );
-  });
+  readonly canStartImport: Signal<boolean> = computed(
+    () => this.selectedFile() !== null && this.status() !== 'UPLOADING'
+  );
 
   readonly progressPercent: Signal<number> = computed(() => {
-    const res = this.jobResult();
-    if (!res) {
-      return 0;
-    }
-    if (res.status === 'COMPLETED' && res.total === 0) {
+    const currentStatus = this.status();
+    if (currentStatus === 'COMPLETED') {
       return 100;
     }
-    if (res.total <= 0) {
-      return 0;
+    if (currentStatus === 'UPLOADING') {
+      return 50;
     }
-    const rawPercent = Math.round((res.processed / res.total) * 100);
-    return Math.min(100, Math.max(0, rawPercent));
+    return 0;
   });
 
   readonly skippedErrors: Signal<CsvSkippedRowError[]> = computed(
     () => this.jobResult()?.errors ?? []
   );
-
-  private activeJobId: string | null = null;
-  private completionNotified: boolean = false;
-  private trackingSubscription: Subscription | null = null;
-  private readonly stopTracking$: Subject<void> = new Subject<void>();
 
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) {
@@ -107,17 +84,12 @@ export class CsvModalComponent implements OnInit {
           this.onClose();
         }
       });
-
-    this.destroyRef.onDestroy(() => {
-      this.stopTracking();
-    });
   }
 
   onClose(): void {
     if (!this.canClose()) {
       return;
     }
-    this.stopTracking();
     this.closed.emit();
   }
 
@@ -137,7 +109,7 @@ export class CsvModalComponent implements OnInit {
   onDragOver(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
-    if (this.status() !== 'UPLOADING' && this.status() !== 'PROCESSING') {
+    if (this.status() !== 'UPLOADING') {
       this.isDragOver.set(true);
     }
   }
@@ -153,7 +125,7 @@ export class CsvModalComponent implements OnInit {
     event.stopPropagation();
     this.isDragOver.set(false);
 
-    if (this.status() === 'UPLOADING' || this.status() === 'PROCESSING') {
+    if (this.status() === 'UPLOADING') {
       return;
     }
 
@@ -170,61 +142,47 @@ export class CsvModalComponent implements OnInit {
       return;
     }
 
-    this.stopTracking();
-    this.activeJobId = null;
-    this.completionNotified = false;
     this.errorMessage.set(null);
     this.jobResult.set(null);
     this.status.set('UPLOADING');
 
     this.csvService
       .importCsv(file)
-      .pipe(
-        finalize(() => {
-          if (this.status() === 'UPLOADING') {
-            this.status.set('FAILED');
-          }
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (response: { jobId: string }) => {
-          if (!response || !response.jobId) {
-            this.status.set('FAILED');
-            this.errorMessage.set('Сервер не вернул идентификатор фоновой задачи импорта.');
-            return;
-          }
+        next: (response: CsvImportResponse) => {
+          const total = Number(response.totalRows ?? 0);
+          const created = Number(response.saved ?? 0);
+          const updated = Number(response.updated ?? 0);
+          const skipped = Number(response.failed ?? 0);
+          const parsedErrors = this.parseServerErrors(response.errors);
 
-          this.activeJobId = response.jobId;
-          this.status.set('PROCESSING');
           this.jobResult.set({
-            jobId: response.jobId,
-            status: 'PROCESSING',
-            total: 0,
-            processed: 0,
-            created: 0,
-            skipped: 0,
-            errors: [],
+            status: 'COMPLETED',
+            total,
+            processed: total,
+            created,
+            updated,
+            skipped,
+            errors: parsedErrors,
           });
+          this.status.set('COMPLETED');
 
-          this.trackJobProgress(response.jobId);
+          if (created > 0 || updated > 0) {
+            this.importCompleted.emit();
+          }
         },
         error: (err: HttpErrorResponse) => {
           this.status.set('FAILED');
-          this.errorMessage.set(
-            getErrorMessage(err, 'Не удалось загрузить CSV-файл на сервер.')
-          );
+          this.errorMessage.set(this.extractImportError(err));
         },
       });
   }
 
   onReset(): void {
-    if (this.status() === 'UPLOADING' || this.status() === 'PROCESSING') {
+    if (this.status() === 'UPLOADING') {
       return;
     }
-    this.stopTracking();
-    this.activeJobId = null;
-    this.completionNotified = false;
     this.selectedFile.set(null);
     this.errorMessage.set(null);
     this.jobResult.set(null);
@@ -265,7 +223,7 @@ export class CsvModalComponent implements OnInit {
     }
 
     if (file.size > MAX_CSV_FILE_BYTES) {
-      this.errorMessage.set('Размер файла превышает максимально допустимые 50 МБ.');
+      this.errorMessage.set('Размер файла превышает максимально допустимые 10 МБ.');
       return;
     }
 
@@ -275,107 +233,33 @@ export class CsvModalComponent implements OnInit {
     this.selectedFile.set(file);
   }
 
-  private trackJobProgress(jobId: string): void {
-    this.stopTracking();
+  private parseServerErrors(rawErrors: unknown): CsvSkippedRowError[] {
+    if (!Array.isArray(rawErrors)) {
+      return [];
+    }
 
-    const sub = new Subscription();
+    return rawErrors.map((entry: unknown) => {
+      const text = String(entry ?? '').trim();
+      const rowMatch = text.match(/^Строка\s+(\d+)(?:\s*\([^)]+\))?:\s*(.+)$/i);
+      const rowNumber = rowMatch ? Number(rowMatch[1]) : 0;
+      const reason = rowMatch ? rowMatch[2].trim() : text;
+      const isuMatch = reason.match(/ИСУ\s+(\d{6})/i);
 
-    // 1. Основной канал прогресса в реальном времени через WebRTC DataChannel
-    sub.add(
-      this.webRtcService.csvProgress$
-        .pipe(
-          filter((event: CsvProgressEvent) => event.jobId === jobId),
-          takeUntil(this.stopTracking$),
-          takeUntilDestroyed(this.destroyRef)
-        )
-        .subscribe((event: CsvProgressEvent) => {
-          this.applyProgressUpdate({
-            jobId: event.jobId,
-            status: event.status,
-            total: Number(event.total ?? 0),
-            processed: Number(event.processed ?? 0),
-            created: Number(event.created ?? 0),
-            skipped: Number(event.skipped ?? 0),
-            errors: Array.isArray(event.errors) ? event.errors : [],
-          });
-        })
-    );
-
-    // 2. Резервный HTTP-поллинг каждые 2 секунды при отключённом WebRTC или в качестве страховки
-    sub.add(
-      timer(2000, 2000)
-        .pipe(
-          filter(() => this.activeJobId === jobId && this.status() === 'PROCESSING'),
-          exhaustMap(() =>
-            this.csvService.getJobStatus(jobId).pipe(
-              catchError(() => of(null))
-            )
-          ),
-          tap((res: CsvJobResult | null) => {
-            if (!res || this.activeJobId !== jobId) {
-              return;
-            }
-            this.applyProgressUpdate({
-              jobId: res.jobId,
-              status: res.status,
-              total: Number(res.total ?? 0),
-              processed: Number(res.processed ?? 0),
-              created: Number(res.created ?? 0),
-              skipped: Number(res.skipped ?? 0),
-              errors: Array.isArray(res.errors) ? res.errors : [],
-            });
-          }),
-          takeUntil(this.stopTracking$),
-          takeUntilDestroyed(this.destroyRef)
-        )
-        .subscribe()
-    );
-
-    this.trackingSubscription = sub;
+      return {
+        row: rowNumber,
+        isuId: isuMatch ? isuMatch[1] : null,
+        reason,
+      };
+    });
   }
 
-  private applyProgressUpdate(next: CsvJobResult): void {
-    const current = this.jobResult();
-
-    // Игнорируем устаревшие кадры, если состояние уже терминальное или прогресс меньше текущего
-    if (current && (current.status === 'COMPLETED' || current.status === 'FAILED')) {
-      return;
+  private extractImportError(err: HttpErrorResponse): string {
+    if (err.status === 0) {
+      return 'Не удалось связаться с сервером.';
     }
-    if (
-      current &&
-      next.status === 'PROCESSING' &&
-      next.processed < current.processed
-    ) {
-      return;
+    if (typeof err.error?.error === 'string' && err.error.error.trim().length > 0) {
+      return err.error.error;
     }
-
-    this.jobResult.set(next);
-
-    if (next.status === 'COMPLETED') {
-      this.status.set('COMPLETED');
-      this.stopTracking();
-
-      if (next.created > 0 && !this.completionNotified) {
-        this.completionNotified = true;
-        this.importCompleted.emit();
-      }
-      return;
-    }
-
-    if (next.status === 'FAILED') {
-      this.status.set('FAILED');
-      this.stopTracking();
-      if (!this.errorMessage()) {
-        this.errorMessage.set('Обработка CSV-файла завершилась с ошибкой.');
-      }
-    }
-  }
-
-  private stopTracking(): void {
-    this.stopTracking$.next();
-    if (this.trackingSubscription) {
-      this.trackingSubscription.unsubscribe();
-      this.trackingSubscription = null;
-    }
+    return getErrorMessage(err, 'Не удалось импортировать CSV-файл.');
   }
 }

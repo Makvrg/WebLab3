@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RT_URL } from './api.constants';
 import { StudentFilter } from './student.service';
-import { CsvJobResult } from '../entity/CsvJob';
+import { CsvImportResponse } from '../entity/CsvJob';
 
 @Injectable({ providedIn: 'root' })
 export class CsvService {
@@ -35,16 +35,14 @@ export class CsvService {
     });
   }
 
-  importCsv(file: File): Observable<{ jobId: string }> {
+  importCsv(file: File): Observable<CsvImportResponse> {
     const formData = new FormData();
     formData.append('file', file, file.name);
 
-    return this.http.post<{ jobId: string }>(`${RT_URL}/csv/import`, formData);
-  }
+    const params = new HttpParams().set('strategy', 'SKIP');
 
-  getJobStatus(jobId: string): Observable<CsvJobResult> {
-    return this.http.get<CsvJobResult>(
-      `${RT_URL}/csv/jobs/${encodeURIComponent(jobId)}`
-    );
+    return this.http.post<CsvImportResponse>(`${RT_URL}/csv/import`, formData, {
+      params,
+    });
   }
 }
