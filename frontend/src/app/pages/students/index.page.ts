@@ -32,7 +32,10 @@ import {
 import { StudentService, StudentFilter } from '../../services/student.service';
 import { UserContextService } from '../../user-context/user-context.service';
 import { WebRtcService } from '../../services/webrtc.service';
+import { CsvService } from '../../services/csv.service';
+import { CsvModalComponent } from '../../components/csv-modal/csv-modal.component';
 import { Student } from '../../entity/Student';
+import { getErrorMessage } from '../../utils/error.util';
 
 export type SortField = 'isuId' | 'fio' | 'stGroup' | 'dormitoryNumber' | 'room';
 export type SortDirection = 'asc' | 'desc';
@@ -42,7 +45,7 @@ const STUDENTS_STATE_KEY = makeStateKey<Student[]>('STUDENTS_LIST');
 @Component({
   selector: 'app-student-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, ReactiveFormsModule],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, CsvModalComponent],
   templateUrl: './index.page.html',
   styleUrls: ['./index.page.css'],
 })
@@ -50,6 +53,7 @@ export default class StudentListPage implements OnInit {
   private readonly studentService: StudentService = inject(StudentService);
   private readonly userContext: UserContextService = inject(UserContextService);
   private readonly webRtcService: WebRtcService = inject(WebRtcService);
+  private readonly csvService: CsvService = inject(CsvService);
   private readonly fb: FormBuilder = inject(FormBuilder);
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
   private readonly platformId: Object = inject(PLATFORM_ID);
@@ -70,6 +74,8 @@ export default class StudentListPage implements OnInit {
 
   readonly showFilters: WritableSignal<boolean> = signal<boolean>(false);
   readonly isLoading: WritableSignal<boolean> = signal<boolean>(false);
+  readonly isExportingCsv: WritableSignal<boolean> = signal<boolean>(false);
+  readonly isCsvModalOpen: WritableSignal<boolean> = signal<boolean>(false);
   readonly errorMessage: WritableSignal<string | null> = signal<string | null>(null);
   readonly successMessage: WritableSignal<string | null> = signal<string | null>(null);
   readonly deletingId: WritableSignal<number | null> = signal<number | null>(null);
@@ -131,7 +137,6 @@ export default class StudentListPage implements OnInit {
     ])
       .pipe(
         switchMap(([filters, page]) => {
-          // Начальная загрузка выполняется сразу (tick === 0)
           const poll$ = isBrowser
             ? timer(0, 5000).pipe(
               filter(
@@ -188,7 +193,6 @@ export default class StudentListPage implements OnInit {
 
                   this.rawStudents.set(data);
 
-                  // Сохраняем для клиента данные первого серверного рендера
                   if (!isBrowser && data.length > 0) {
                     this.transferState.set(STUDENTS_STATE_KEY, data);
                   }
@@ -241,6 +245,57 @@ export default class StudentListPage implements OnInit {
     });
   }
 
+  onExportCsv(): void {
+    if (!isPlatformBrowser(this.platformId) || this.isExportingCsv()) {
+      return;
+    }
+
+    this.isExportingCsv.set(true);
+    this.errorMessage.set(null);
+
+    const activeFilters = this.normalizeFilters(this.filterForm.getRawValue());
+
+    this.csvService
+      .exportCsv(activeFilters)
+      .pipe(
+        finalize(() => this.isExportingCsv.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (blob: Blob) => {
+          const objectUrl = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = objectUrl;
+          link.download = 'students.csv';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(objectUrl);
+
+          this.flashSuccess('Список студентов экспортирован в CSV');
+        },
+        error: (err: HttpErrorResponse) => {
+          void this.handleCsvExportError(err);
+        },
+      });
+  }
+
+  openCsvModal(): void {
+    if (!this.isAdmin()) {
+      return;
+    }
+    this.isCsvModalOpen.set(true);
+  }
+
+  closeCsvModal(): void {
+    this.isCsvModalOpen.set(false);
+  }
+
+  onCsvImportCompleted(): void {
+    this.studentService.invalidateCache();
+    this.flashSuccess('Импорт CSV завершён');
+  }
+
   onSort(field: SortField): void {
     if (this.sortField() === field) {
       this.sortDirection.update((dir: 'asc' | 'desc') => (dir === 'asc' ? 'desc' : 'asc'));
@@ -285,6 +340,32 @@ export default class StudentListPage implements OnInit {
           this.errorMessage.set(msg);
         },
       });
+  }
+
+  private async handleCsvExportError(err: HttpErrorResponse): Promise<void> {
+    if (err.status === 0) {
+      this.errorMessage.set('Не удалось связаться с сервером.');
+      return;
+    }
+
+    if (err.error instanceof Blob) {
+      try {
+        const text = await err.error.text();
+        const parsed = JSON.parse(text);
+        const msg =
+          parsed?.error?.message ||
+          parsed?.message ||
+          'Не удалось экспортировать список студентов в CSV.';
+        this.errorMessage.set(msg);
+        return;
+      } catch {
+        // Если ответ не JSON, используем стандартное сообщение
+      }
+    }
+
+    this.errorMessage.set(
+      getErrorMessage(err, 'Не удалось экспортировать список студентов в CSV.')
+    );
   }
 
   private setPage(page: number): void {

@@ -1,0 +1,195 @@
+<div class="modal-backdrop" (click)="onBackdropClick($event)">
+  <div
+    class="modal-dialog card"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="csv-modal-title"
+  >
+    <div class="modal-header">
+      <h3 id="csv-modal-title">Импорт студентов из CSV</h3>
+      <button
+        type="button"
+        class="modal-close-btn"
+        aria-label="Закрыть окно"
+        [disabled]="!canClose()"
+        (click)="onClose()"
+      >
+        &times;
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="csv-guide-box">
+        <p class="guide-title">Требования к формату файла:</p>
+        <ul class="guide-list">
+          <li>Кодировка: <strong>UTF-8</strong>, разделитель колонок — запятая (<code>,</code>).</li>
+          <li>
+            Заголовки колонок:
+            <code class="headers-code">isuId,fio,stGroup,dormitoryNumber,room,dateOfPlacement,isNotRussian,notes</code>
+          </li>
+          <li>
+            Стратегия обработки:
+            <em>«Некорректные строки и записи с уже существующим ИСУ ID будут пропущены с указанием причины, валидные записи — сохранены»</em>.
+          </li>
+        </ul>
+      </div>
+
+      @if (errorMessage()) {
+        <div class="alert-box alert-danger" role="alert">
+          {{ errorMessage() }}
+        </div>
+      }
+
+      @if (status() === 'IDLE' || status() === 'UPLOADING') {
+        <div
+          class="dropzone"
+          [class.dropzone-active]="isDragOver()"
+          [class.dropzone-disabled]="status() === 'UPLOADING'"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+        >
+          <input
+            #fileInput
+            type="file"
+            accept=".csv,text/csv"
+            class="file-input-hidden"
+            [disabled]="status() === 'UPLOADING'"
+            (change)="onFileSelected($event)"
+          />
+
+          @if (selectedFile(); as file) {
+            <div class="selected-file-info">
+              <span class="file-name">{{ file.name }}</span>
+              <span class="file-size">({{ formatFileSize(file.size) }})</span>
+              @if (status() !== 'UPLOADING') {
+                <button
+                  type="button"
+                  class="btn btn-small"
+                  (click)="fileInput.click()"
+                >
+                  Выбрать другой
+                </button>
+              }
+            </div>
+          } @else {
+            <p class="dropzone-text">Перетащите CSV-файл сюда или выберите на компьютере</p>
+            <button
+              type="button"
+              class="btn"
+              (click)="fileInput.click()"
+            >
+              Выбрать файл (.csv)
+            </button>
+          }
+        </div>
+      }
+
+      @if (jobResult(); as result) {
+        <div class="progress-section">
+          <div class="progress-header">
+            <span class="progress-status-label">
+              @switch (status()) {
+                @case ('PROCESSING') { Обработка записей... }
+                @case ('COMPLETED') { Импорт завершён }
+                @case ('FAILED') { Импорт остановлен с ошибкой }
+              }
+            </span>
+            <span class="progress-percent">{{ progressPercent() }}%</span>
+          </div>
+
+          <div class="progress-track" role="progressbar" [attr.aria-valuenow]="progressPercent()" aria-valuemin="0" aria-valuemax="100">
+            <div
+              class="progress-fill"
+              [class.progress-fill-completed]="status() === 'COMPLETED'"
+              [class.progress-fill-failed]="status() === 'FAILED'"
+              [style.width.%]="progressPercent()"
+            ></div>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-label">Всего</span>
+              <span class="stat-value">{{ result.total }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Обработано</span>
+              <span class="stat-value">{{ result.processed }}</span>
+            </div>
+            <div class="stat-item stat-created">
+              <span class="stat-label">Сохранено</span>
+              <span class="stat-value">{{ result.created }}</span>
+            </div>
+            <div class="stat-item stat-skipped">
+              <span class="stat-label">Пропущено</span>
+              <span class="stat-value">{{ result.skipped }}</span>
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (skippedErrors().length > 0) {
+        <div class="errors-section">
+          <h4>Пропущенные строки ({{ skippedErrors().length }})</h4>
+          <div class="errors-table-wrapper">
+            <table class="errors-table">
+              <thead>
+              <tr>
+                <th>№ строки</th>
+                <th>ИСУ ID</th>
+                <th>Причина пропуска</th>
+              </tr>
+              </thead>
+              <tbody>
+                @for (err of skippedErrors(); track $index) {
+                  <tr>
+                    <td>{{ err.row }}</td>
+                    <td>{{ err.isuId || '—' }}</td>
+                    <td>{{ err.reason }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="modal-footer">
+      @if (status() === 'COMPLETED' || status() === 'FAILED') {
+        <button
+          type="button"
+          class="btn"
+          (click)="onReset()"
+        >
+          Загрузить другой файл
+        </button>
+      }
+
+      <button
+        type="button"
+        class="btn"
+        [disabled]="!canClose()"
+        (click)="onClose()"
+      >
+        Закрыть
+      </button>
+
+      @if (status() === 'IDLE' || status() === 'UPLOADING') {
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="!canStartImport()"
+          (click)="onStartImport()"
+        >
+          @if (status() === 'UPLOADING') {
+            <span class="spinner"></span>
+            <span>Загрузка...</span>
+          } @else {
+            <span>Начать импорт</span>
+          }
+        </button>
+      }
+    </div>
+  </div>
+</div>
