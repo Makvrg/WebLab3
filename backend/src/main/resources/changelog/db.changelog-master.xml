@@ -25,4 +25,12 @@
         <sqlFile path="db/migrations/5__create_refresh_token_table.sql" relativeToChangelogFile="false" encoding="utf8"/>
     </changeSet>
 
+    <changeSet id="6" author="Max_Lekomscev">
+        <sqlFile path="db/migrations/6__create_outbox_event_table.sql" relativeToChangelogFile="false" encoding="utf8"/>
+    </changeSet>
+
+    <changeSet id="7" author="Max_Lekomscev">
+        <sqlFile path="db/migrations/7__create_outbox_undelivered_index.sql" relativeToChangelogFile="false" encoding="utf8"/>
+    </changeSet>
+
 </databaseChangeLog>

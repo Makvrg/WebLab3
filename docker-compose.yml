@@ -26,7 +26,7 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
-      NODE_BACKEND_URL: http://node-backend:4000
+      NODE_BACKEND_URL: ${NODE_BACKEND_URL}
       CORS_ORIGIN: ${CORS_ORIGIN}
     depends_on:
       postgres:
@@ -36,7 +36,7 @@ services:
     build: ./node-backend
     environment:
       PORT: 4000
-      JAVA_BACKEND_URL: http://backend:8080
+      JAVA_BACKEND_URL: ${BACKEND_URL}
       AUDIT_FILE_PATH: /app/data/audit.ndjson
       JWT_SECRET: ${JWT_SECRET}
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
@@ -54,8 +54,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     # Если понадобится подключиться к БД с компьютера через DataGrip/pgAdmin,
     # можно временно раскомментировать строку ниже:
-    # ports:
-    #   - "127.0.0.1:${POSTGRES_PORT}:5432"
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/src/main/resources/db/migrations:/docker-entrypoint-initdb.d:ro
