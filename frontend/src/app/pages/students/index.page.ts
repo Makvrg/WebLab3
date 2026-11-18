@@ -1,18 +1,37 @@
-import {Component, OnInit, inject, signal, computed,
-    DestroyRef, WritableSignal, Signal, TransferState,
-    makeStateKey} from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import {
+  Component,
+  OnInit,
+  inject,
+  signal,
+  computed,
+  DestroyRef,
+  WritableSignal,
+  Signal,
+  TransferState,
+  makeStateKey,
+  PLATFORM_ID,
+} from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { BehaviorSubject, combineLatest, Observable, of, timer, } from 'rxjs';
-import { catchError, debounceTime, distinctUntilChanged,
-         finalize, map, startWith, switchMap, tap, exhaustMap,} from 'rxjs/operators';
+import { BehaviorSubject, combineLatest, Observable, of, timer } from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  exhaustMap,
+  filter,
+  finalize,
+  map,
+  startWith,
+  switchMap,
+  tap,
+} from 'rxjs/operators';
 import { StudentService, StudentFilter } from '../../services/student.service';
 import { UserContextService } from '../../user-context/user-context.service';
+import { WebRtcService } from '../../services/webrtc.service';
 import { Student } from '../../entity/Student';
 
 export type SortField = 'isuId' | 'fio' | 'stGroup' | 'dormitoryNumber' | 'room';
@@ -30,6 +49,7 @@ const STUDENTS_STATE_KEY = makeStateKey<Student[]>('STUDENTS_LIST');
 export default class StudentListPage implements OnInit {
   private readonly studentService: StudentService = inject(StudentService);
   private readonly userContext: UserContextService = inject(UserContextService);
+  private readonly webRtcService: WebRtcService = inject(WebRtcService);
   private readonly fb: FormBuilder = inject(FormBuilder);
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
   private readonly platformId: Object = inject(PLATFORM_ID);
@@ -88,7 +108,7 @@ export default class StudentListPage implements OnInit {
   });
 
   ngOnInit(): void {
-    const isBrowser = isPlatformBrowser(this.platformId);
+    const isBrowser: boolean = isPlatformBrowser(this.platformId);
     const filters$: Observable<StudentFilter> = this.filterForm.valueChanges.pipe(
       startWith(this.filterForm.getRawValue()),
       debounceTime(300),
@@ -111,9 +131,18 @@ export default class StudentListPage implements OnInit {
     ])
       .pipe(
         switchMap(([filters, page]) => {
-          const poll$ = isBrowser ? timer(0, 5000) : of(0);
+          // Начальная загрузка выполняется сразу (tick === 0)
+          const poll$ = isBrowser
+            ? timer(0, 5000).pipe(
+              filter(
+                (tick: number) =>
+                  tick === 0 || this.webRtcService.status() !== 'connected'
+              )
+            )
+            : of(0);
+
           return poll$.pipe(
-            exhaustMap((tick) => {
+            exhaustMap((tick: number) => {
               const isPolling: boolean = tick > 0;
 
               if (!isPolling) {
@@ -181,6 +210,14 @@ export default class StudentListPage implements OnInit {
       )
       .subscribe();
 
+    if (isBrowser) {
+      this.webRtcService.studentEvents$
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => {
+          this.studentService.invalidateCache();
+        });
+    }
+
     this.studentService.cacheInvalidated$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
@@ -206,7 +243,7 @@ export default class StudentListPage implements OnInit {
 
   onSort(field: SortField): void {
     if (this.sortField() === field) {
-      this.sortDirection.update((dir: "asc" | "desc") => (dir === 'asc' ? 'desc' : 'asc'));
+      this.sortDirection.update((dir: 'asc' | 'desc') => (dir === 'asc' ? 'desc' : 'asc'));
     } else {
       this.sortField.set(field);
       this.sortDirection.set('asc');

@@ -1,0 +1,51 @@
+@if (isAdmin() && toasts().length > 0) {
+  <div class="toast-container" aria-live="polite" aria-atomic="false">
+    @for (toast of toasts(); track toast.eventId) {
+      <div class="toast-card" [ngClass]="toast.accentClass" role="status">
+        <div class="toast-header">
+          <div class="toast-title-group">
+            <span class="toast-title">{{ toast.title }}</span>
+            <span class="toast-source-badge">{{ toast.sourceLabel }}</span>
+          </div>
+
+          <button
+            type="button"
+            class="toast-close-btn"
+            aria-label="Закрыть уведомление"
+            (click)="dismiss(toast.eventId)"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div class="toast-body">
+          @if (toast.fio) {
+            <div class="toast-fio">{{ toast.fio }}</div>
+          }
+
+          <div class="toast-details">
+            @if (toast.isuId > 0) {
+              <span>ИСУ: <strong>{{ toast.isuId }}</strong></span>
+              <span class="toast-sep">&bull;</span>
+            }
+            <span>Инициатор: <strong>{{ toast.actorLogin }}</strong></span>
+          </div>
+        </div>
+
+        <div class="toast-footer">
+          <span class="toast-time">{{ toast.timestamp | date:'HH:mm:ss' }}</span>
+
+          @if (toast.canNavigate) {
+            <a
+              [routerLink]="['/students', toast.isuId]"
+              class="toast-link"
+              (click)="dismiss(toast.eventId)"
+            >
+              Открыть карточку &rarr;
+            </a>
+          }
+        </div>
+      </div>
+    }
+  </div>
+}

@@ -4,5 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js"
+  },
+  "dependencies": {
+    "werift": "^0.27.0"
   }
 }

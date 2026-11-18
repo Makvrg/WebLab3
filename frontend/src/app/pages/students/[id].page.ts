@@ -1,15 +1,23 @@
 import {
-  Component, OnInit, inject, signal,
-  DestroyRef, Signal, WritableSignal, PLATFORM_ID,
+  Component,
+  OnInit,
+  inject,
+  signal,
+  DestroyRef,
+  Signal,
+  WritableSignal,
+  PLATFORM_ID,
 } from '@angular/core';
 import { CommonModule, DatePipe, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { of, timer } from 'rxjs';
-import { catchError, exhaustMap, map, tap, finalize } from 'rxjs/operators';
+import { Observable, of, timer } from 'rxjs';
+import { catchError, exhaustMap, filter, finalize, map, tap } from 'rxjs/operators';
 import { StudentService } from '../../services/student.service';
 import { UserContextService } from '../../user-context/user-context.service';
+import { WebRtcService } from '../../services/webrtc.service';
+import { StudentRealtimeEvent } from '../../entity/RealtimeEvents';
 import { Student } from '../../entity/Student';
 
 @Component({
@@ -23,6 +31,7 @@ export default class StudentDetailPage implements OnInit {
   private readonly route: ActivatedRoute = inject(ActivatedRoute);
   private readonly studentService: StudentService = inject(StudentService);
   private readonly userContext: UserContextService = inject(UserContextService);
+  private readonly webRtcService: WebRtcService = inject(WebRtcService);
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
   private readonly platformId: Object = inject(PLATFORM_ID);
 
@@ -46,31 +55,59 @@ export default class StudentDetailPage implements OnInit {
     this.loadStudentData(studentId, false);
 
     if (isPlatformBrowser(this.platformId)) {
+      this.webRtcService.studentEvents$
+        .pipe(
+          filter((event: StudentRealtimeEvent) => Number(event.isuId) === studentId),
+          exhaustMap((event: StudentRealtimeEvent) => {
+            this.studentService.invalidateCache();
+
+            if (event.action === 'DELETE') {
+              this.isNotFound.set(true);
+              this.student.set(null);
+              this.errorMessage.set('Студент был удален из базы данных.');
+              return of(null);
+            }
+
+            if (event.action === 'UPDATE' || event.action === 'CREATE') {
+              return this.refreshStudentSilently(studentId);
+            }
+
+            return of(null);
+          }),
+          takeUntilDestroyed(this.destroyRef)
+        )
+        .subscribe();
+
+      // Резервный HTTP-поллинг запускается только при отсутствии активного WebRTC-соединения
       timer(5000, 5000)
         .pipe(
-          exhaustMap(() =>
-            this.studentService.getStudent(studentId, true).pipe(
-              map((raw: Student): Student => this.mapToStudent(raw)),
-              catchError((err: HttpErrorResponse) => {
-                if (err.status === 404) {
-                  this.isNotFound.set(true);
-                  this.student.set(null);
-                  this.errorMessage.set('Студент был удален из базы данных.');
-                }
-                return of(null);
-              }),
-              tap((loaded: Student | null) => {
-                if (loaded) {
-                  this.student.set(loaded);
-                  this.errorMessage.set(null);
-                }
-              })
-            )
-          ),
+          filter(() => this.webRtcService.status() !== 'connected'),
+          exhaustMap(() => this.refreshStudentSilently(studentId)),
           takeUntilDestroyed(this.destroyRef)
         )
         .subscribe();
     }
+  }
+
+  private refreshStudentSilently(studentId: number): Observable<Student | null> {
+    return this.studentService.getStudent(studentId, true).pipe(
+      map((raw: Student): Student => this.mapToStudent(raw)),
+      catchError((err: HttpErrorResponse) => {
+        if (err.status === 404) {
+          this.isNotFound.set(true);
+          this.student.set(null);
+          this.errorMessage.set('Студент был удален из базы данных.');
+        }
+        return of(null);
+      }),
+      tap((loaded: Student | null) => {
+        if (loaded) {
+          this.isNotFound.set(false);
+          this.student.set(loaded);
+          this.errorMessage.set(null);
+        }
+      })
+    );
   }
 
   private loadStudentData(id: number, bypassCache: boolean): void {
