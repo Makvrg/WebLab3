@@ -81,8 +81,9 @@ export class PeerManager {
 
         const rtcConfig = {
             iceServers: DEFAULT_ICE_SERVERS,
-            portRange: [config.webrtcPortMin, config.webrtcPortMax],
+            icePortRange: [config.webrtcPortMin, config.webrtcPortMax],
             iceAdditionalHostAddresses: config.webrtcPublicIp ? [config.webrtcPublicIp] : [],
+            iceUseIpv6: false,
         };
 
         const pc = new RTCPeerConnection(rtcConfig);
