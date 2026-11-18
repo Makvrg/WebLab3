@@ -26,48 +26,45 @@ function escapeCsvCell(value) {
     return str;
 }
 
-function buildFilterBody(searchParams) {
-    const filter = {};
-    const numericFields = new Set(['isuId', 'dormitoryNumber', 'room']);
-    const stringFields = ['fio', 'stGroup', 'dateOfPlacement'];
+function buildFilterParams(searchParams) {
+    const params = new URLSearchParams();
+    const allowedKeys = [
+        'isuId',
+        'fio',
+        'stGroup',
+        'dormitoryNumber',
+        'room',
+        'dateOfPlacement',
+        'isNotRussian',
+    ];
 
-    for (const key of numericFields) {
-        const val = searchParams.get(key);
-        if (val !== null && val.trim() !== '' && !Number.isNaN(Number(val))) {
-            filter[key] = Number(val);
-        }
-    }
-
-    for (const key of stringFields) {
+    for (const key of allowedKeys) {
         const val = searchParams.get(key);
         if (val !== null && val.trim() !== '') {
-            filter[key] = val.trim();
+            params.set(key, val.trim());
         }
     }
-
-    const isNotRussian = searchParams.get('isNotRussian');
-    if (isNotRussian === 'true' || isNotRussian === 'false') {
-        filter.isNotRussian = isNotRussian === 'true';
-    }
-
-    return filter;
+    return params;
 }
 
-async function* fetchStudentsGenerator(rawToken, filterBody) {
-    let page = 0;
-    const size = 100;
+async function* fetchStudentsGenerator(rawToken, filterParams) {
+    // Проверь в StudentService.java: если формула offset = (pageNumber - 1) * pageSize, поставь 1
+    let pageNumber = 1;
+    const pageSize = 100;
+    let previousFirstId = null;
 
     while (true) {
-        const url = new URL(`${config.javaBackendUrl}/api/students`);
-        url.searchParams.set('page', String(page));
-        url.searchParams.set('size', String(size));
-        for (const [key, val] of Object.entries(filterBody)) {
-            url.searchParams.set(key, String(val));
+        const url = new URL(`${config.javaBackendUrl}/students`);
+        for (const [key, val] of filterParams.entries()) {
+            url.searchParams.set(key, val);
         }
+        url.searchParams.set('pageNumber', String(pageNumber));
+        url.searchParams.set('pageSize', String(pageSize));
 
         const response = await fetch(url, {
             method: 'GET',
             headers: {
+                'Accept': 'application/json',
                 'Authorization': `Bearer ${rawToken}`,
             },
         });
@@ -83,15 +80,16 @@ async function* fetchStudentsGenerator(rawToken, filterBody) {
             break;
         }
 
+        if (items[0]?.isuId !== undefined && items[0].isuId === previousFirstId) {
+            break;
+        }
+        previousFirstId = items[0]?.isuId ?? null;
+
         for (const student of items) {
             yield student;
         }
 
-        if (data.last === true || items.length < size) {
-            break;
-        }
-
-        page += 1;
+        pageNumber += 1;
     }
 }
 
@@ -139,10 +137,10 @@ export async function handleCsvExport(req, res, searchParams) {
         return sendJson(res, 401, { error: 'Unauthorized' });
     }
 
-    const filterBody = buildFilterBody(searchParams);
+    const filterParams = buildFilterParams(searchParams);
 
     try {
-        const sourceStream = Readable.from(fetchStudentsGenerator(user.rawToken, filterBody));
+        const sourceStream = Readable.from(fetchStudentsGenerator(user.rawToken, filterParams));
         const csvTransform = createCsvTransformStream(res);
 
         await pipeline(sourceStream, csvTransform, res);

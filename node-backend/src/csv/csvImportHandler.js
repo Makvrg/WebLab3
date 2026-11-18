@@ -63,8 +63,6 @@ export async function handleCsvImport(req, res, searchParams) {
         return sendJson(res, 403, { error: 'Forbidden: ADMIN role required' });
     }
 
-    // SKIP (по умолчанию) — пропускает конфликты и пишет "номер ИСУ уже существует"
-    // OVERWRITE — обновляет существующего студента
     const strategy = (searchParams.get('strategy') || 'SKIP').toUpperCase();
 
     let csvText;
@@ -84,15 +82,19 @@ export async function handleCsvImport(req, res, searchParams) {
     let updated = 0;
     let failed = parsed.errors.length;
 
+    const javaStudentsUrl = `${config.javaBackendUrl}/students`;
+    const authHeaders = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${user.rawToken}`,
+        'X-Action-Source': 'CSV_IMPORT',
+    };
+
     for (const { lineNumber, student } of parsed.validRows) {
         try {
-            const createRes = await fetch(`${config.javaBackendUrl}/api/students`, {
+            const createRes = await fetch(javaStudentsUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${user.rawToken}`,
-                    'X-Action-Source': 'CSV_IMPORT',
-                },
+                headers: authHeaders,
                 body: JSON.stringify(student),
             });
 
@@ -108,13 +110,9 @@ export async function handleCsvImport(req, res, searchParams) {
 
             if (isDuplicate) {
                 if (strategy === 'OVERWRITE') {
-                    const updateRes = await fetch(`${config.javaBackendUrl}/api/students/${student.isuId}`, {
+                    const updateRes = await fetch(`${javaStudentsUrl}/${student.isuId}`, {
                         method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${user.rawToken}`,
-                            'X-Action-Source': 'CSV_IMPORT',
-                        },
+                        headers: authHeaders,
                         body: JSON.stringify(student),
                     });
 
