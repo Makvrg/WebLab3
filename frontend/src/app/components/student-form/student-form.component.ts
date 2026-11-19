@@ -7,7 +7,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs/operators';
 import { StudentService } from '../../services/student.service';
 import { Student } from '../../entity/Student';
-import {Observable} from 'rxjs';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-student-form',
@@ -103,7 +103,9 @@ export default class StudentFormComponent implements OnInit {
               ? 'Не удалось связаться с сервером.'
               : err.status === 404
                 ? 'Редактируемый студент не найден.'
-                : err.error?.error?.message || err.error?.message || 'Не удалось загрузить данные студента.';
+                : err.error?.error?.message ||
+                err.error?.message ||
+                'Не удалось загрузить данные студента.';
           this.errorMessage.set(msg);
         },
       });
@@ -158,7 +160,10 @@ export default class StudentFormComponent implements OnInit {
     }
 
     if (err.status === 409) {
-      const msg = err.error?.message || 'Студент с таким номером ИСУ уже существует.';
+      const msg =
+        err.error?.error?.message ||
+        err.error?.message ||
+        'Студент с таким номером ИСУ уже существует.';
       this.errorMessage.set(msg);
       this.studentForm.get('isuId')?.setErrors({ serverConflict: true });
       return;
@@ -183,7 +188,9 @@ export default class StudentFormComponent implements OnInit {
 
       this.fieldErrors.set(errorsObj);
       this.errorMessage.set(
-        err.error?.message || 'Ошибка валидации данных. Проверьте заполнение формы.'
+        err.error?.error?.message ||
+        err.error?.message ||
+        'Ошибка валидации данных. Проверьте заполнение формы.'
       );
       return;
     }

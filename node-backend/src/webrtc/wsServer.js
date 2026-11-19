@@ -112,7 +112,7 @@ export function attachSignalingServer(
         }
 
         if (pathname !== SIGNAL_PATH) {
-            socket.destroy();
+            writeHttpRejection(socket, '404 Not Found');
             return;
         }
 

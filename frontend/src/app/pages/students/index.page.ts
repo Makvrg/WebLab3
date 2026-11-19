@@ -355,6 +355,9 @@ export default class StudentListPage implements OnInit {
         const text = await err.error.text();
         const parsed = JSON.parse(text);
         const msg =
+          (typeof parsed?.error === 'string' && parsed.error.trim().length > 0
+            ? parsed.error
+            : null) ||
           parsed?.error?.message ||
           parsed?.message ||
           'Не удалось экспортировать список студентов в CSV.';

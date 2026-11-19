@@ -1,5 +1,10 @@
-import {defineEventHandler, getCookie, deleteCookie,
-  H3Event, EventHandlerRequest} from 'h3';
+import {
+  defineEventHandler,
+  getCookie,
+  H3Event,
+  EventHandlerRequest,
+} from 'h3';
+import { clearAuthCookies } from '../../../utils/auth-cookies';
 
 export default defineEventHandler(
   async (event: H3Event<EventHandlerRequest>): Promise<{ success: true }> => {
@@ -21,9 +26,8 @@ export default defineEventHandler(
       }
     }
 
-    deleteCookie(event, 'accessToken', { path: '/' });
-    deleteCookie(event, 'refreshToken', { path: '/' });
-    deleteCookie(event, 'refreshTokenId', { path: '/' });
+    clearAuthCookies(event);
 
     return { success: true };
-  });
+  }
+);
