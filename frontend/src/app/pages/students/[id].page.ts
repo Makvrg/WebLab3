@@ -88,10 +88,9 @@ export default class StudentDetailPage implements OnInit {
         )
         .subscribe();
 
-      // Резервный HTTP-поллинг запускается только при отсутствии активного WebRTC-соединения
       timer(5000, 5000)
         .pipe(
-          filter(() => this.webRtcService.status() !== 'connected'),
+          filter(() => !this.isAdmin() || this.webRtcService.status() !== 'connected'),
           exhaustMap(() => this.refreshStudentSilently(studentId)),
           takeUntilDestroyed(this.destroyRef)
         )

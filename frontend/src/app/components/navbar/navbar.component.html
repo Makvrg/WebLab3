@@ -39,18 +39,20 @@
         </span>
       </a>
 
-      <span
-        class="rt-indicator"
-        [class.rt-connected]="webrtcStatus() === 'connected'"
-        [class.rt-connecting]="webrtcStatus() === 'connecting'"
-        [class.rt-disconnected]="webrtcStatus() === 'disconnected'"
-        [title]="webrtcStatusLabel()"
-        role="status"
-        [attr.aria-label]="webrtcStatusLabel()"
-      >
-        <span class="rt-dot"></span>
-        <span class="rt-text">RT</span>
-      </span>
+      @if (userRole() === 'ADMIN') {
+        <span
+          class="rt-indicator"
+          [class.rt-connected]="webrtcStatus() === 'connected'"
+          [class.rt-connecting]="webrtcStatus() === 'connecting'"
+          [class.rt-disconnected]="webrtcStatus() === 'disconnected'"
+          [title]="webrtcStatusLabel()"
+          role="status"
+          [attr.aria-label]="webrtcStatusLabel()"
+        >
+          <span class="rt-dot"></span>
+          <span class="rt-text">RT</span>
+        </span>
+      }
 
       <button
         type="button"

@@ -141,7 +141,9 @@ export default class StudentListPage implements OnInit {
             ? timer(0, 5000).pipe(
               filter(
                 (tick: number) =>
-                  tick === 0 || this.webRtcService.status() !== 'connected'
+                  tick === 0 ||
+                  !this.isAdmin() ||
+                  this.webRtcService.status() !== 'connected'
               )
             )
             : of(0);

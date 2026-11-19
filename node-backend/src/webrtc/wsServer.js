@@ -148,6 +148,11 @@ export function attachSignalingServer(
             return;
         }
 
+        if (user.role !== 'ADMIN') {
+            writeHttpRejection(socket, '403 Forbidden');
+            return;
+        }
+
         const acceptKey = crypto
             .createHash('sha1')
             .update(wsKey.trim() + WS_MAGIC_GUID)

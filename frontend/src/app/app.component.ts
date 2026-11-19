@@ -23,7 +23,7 @@ export default class AppComponent {
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
       effect(() => {
-        if (this.userContextService.isAuthenticated()) {
+        if (this.userContextService.isAdmin()) {
           this.webRtcService.connect();
         } else {
           this.webRtcService.disconnect();
