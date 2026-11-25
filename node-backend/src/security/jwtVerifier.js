@@ -1,8 +1,18 @@
 import crypto from 'node:crypto';
 import { config } from '../config.js';
 
+const EXPECTED_ALG = 'RS256';
+const RSA_SIGNATURE_ALGO = 'RSA-SHA256';
+const JWT_PARTS_COUNT = 3;
+const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
+const MS_PER_SECOND = 1000;
+const ALLOWED_ROLES = new Set(['USER', 'ADMIN']);
+
+const HTTP_UNAUTHORIZED = 401;
+const HTTP_INTERNAL_SERVER_ERROR = 500;
+
 export class AuthError extends Error {
-    constructor(message, statusCode = 401) {
+    constructor(message, statusCode = HTTP_UNAUTHORIZED) {
         super(message);
         this.name = 'AuthError';
         this.statusCode = statusCode;
@@ -63,72 +73,104 @@ function decodeBase64UrlJson(segment, errorMessage) {
         const json = Buffer.from(segment, 'base64url').toString('utf8');
         parsed = JSON.parse(json);
     } catch {
-        throw new AuthError(errorMessage, 401);
+        throw new AuthError(errorMessage, HTTP_UNAUTHORIZED);
     }
 
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new AuthError(errorMessage, 401);
+        throw new AuthError(errorMessage, HTTP_UNAUTHORIZED);
     }
 
     return parsed;
 }
 
+let cachedPem = null;
+let cachedPublicKeyObject = null;
+
+function getPublicKeyObject() {
+    const pem =
+        config?.jwtPublicKey ||
+        (process.env.JWT_PUBLIC_KEY
+            ? process.env.JWT_PUBLIC_KEY.replace(/\\n/g, '\n')
+            : null);
+
+    if (!pem || typeof pem !== 'string' || pem.trim().length === 0) {
+        throw new AuthError('Публичный ключ JWT не задан в переменных окружения', HTTP_INTERNAL_SERVER_ERROR);
+    }
+
+    if (cachedPublicKeyObject && cachedPem === pem) {
+        return cachedPublicKeyObject;
+    }
+
+    try {
+        cachedPublicKeyObject = crypto.createPublicKey(pem);
+        cachedPem = pem;
+        return cachedPublicKeyObject;
+    } catch {
+        throw new AuthError('Некорректный публичный ключ JWT', HTTP_INTERNAL_SERVER_ERROR);
+    }
+}
+
 export function verifyAccessToken(token) {
     if (!token || typeof token !== 'string') {
-        throw new AuthError('Токен аутентификации отсутствует', 401);
+        throw new AuthError('Токен аутентификации отсутствует', HTTP_UNAUTHORIZED);
     }
 
-    const secret = config?.jwtSecret || process.env.JWT_SECRET;
-    if (!secret || typeof secret !== 'string') {
-        throw new AuthError('JWT_SECRET не задан в переменных окружения', 500);
-    }
+    const publicKeyObject = getPublicKeyObject();
 
     const parts = token.split('.');
-    if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) {
-        throw new AuthError('Некорректный формат JWT токена', 401);
+    if (parts.length !== JWT_PARTS_COUNT || !parts[0] || !parts[1] || !parts[2]) {
+        throw new AuthError('Некорректный формат JWT токена', HTTP_UNAUTHORIZED);
     }
 
     const [encodedHeader, encodedPayload, encodedSignature] = parts;
     const header = decodeBase64UrlJson(encodedHeader, 'Не удалось декодировать заголовок JWT');
 
-    if (header.alg !== 'HS256') {
-        throw new AuthError('Неподдерживаемый алгоритм подписи JWT', 401);
+    if (header.alg !== EXPECTED_ALG) {
+        throw new AuthError('Неподдерживаемый алгоритм подписи JWT', HTTP_UNAUTHORIZED);
+    }
+
+    if (!BASE64URL_PATTERN.test(encodedSignature)) {
+        throw new AuthError('Недействительная подпись JWT токена', HTTP_UNAUTHORIZED);
     }
 
     const unsignedToken = `${encodedHeader}.${encodedPayload}`;
-    const expectedSignature = crypto
-        .createHmac('sha256', secret)
-        .update(unsignedToken)
-        .digest('base64url');
+    let isSignatureValid = false;
+    try {
+        isSignatureValid = crypto.verify(
+            RSA_SIGNATURE_ALGO,
+            Buffer.from(unsignedToken, 'utf8'),
+            publicKeyObject,
+            Buffer.from(encodedSignature, 'base64url')
+        );
+    } catch {
+        isSignatureValid = false;
+    }
 
-    const expectedBuf = Buffer.from(expectedSignature, 'utf8');
-    const actualBuf = Buffer.from(encodedSignature, 'utf8');
-
-    if (expectedBuf.length !== actualBuf.length || !crypto.timingSafeEqual(expectedBuf, actualBuf)) {
-        throw new AuthError('Недействительная подпись JWT токена', 401);
+    if (!isSignatureValid) {
+        throw new AuthError('Недействительная подпись JWT токена', HTTP_UNAUTHORIZED);
     }
 
     const payload = decodeBase64UrlJson(encodedPayload, 'Не удалось декодировать полезную нагрузку JWT');
 
     if (typeof payload.exp !== 'number' || !Number.isFinite(payload.exp)) {
-        throw new AuthError('В токене отсутствует корректное время истечения (exp)', 401);
+        throw new AuthError('В токене отсутствует корректное время истечения (exp)', HTTP_UNAUTHORIZED);
     }
 
-    if (payload.exp * 1000 <= Date.now()) {
-        throw new AuthError('Срок действия токена истёк', 401);
+    if (payload.exp * MS_PER_SECOND <= Date.now()) {
+        throw new AuthError('Срок действия токена истёк', HTTP_UNAUTHORIZED);
     }
 
     if (!Number.isInteger(payload.userId) || payload.userId <= 0) {
-        throw new AuthError('Некорректный userId в токене', 401);
+        throw new AuthError('Некорректный userId в токене', HTTP_UNAUTHORIZED);
     }
 
     const resolvedLogin = typeof payload.login === 'string' ? payload.login : payload.sub;
     if (typeof resolvedLogin !== 'string' || resolvedLogin.trim().length === 0) {
-        throw new AuthError('Некорректный login в токене', 401);
+        throw new AuthError('Некорректный login в токене', HTTP_UNAUTHORIZED);
     }
 
-    if (payload.role !== 'USER' && payload.role !== 'ADMIN') {
-        throw new AuthError('Некорректная роль пользователя в токене', 401);
+    if (!ALLOWED_ROLES.has(payload.role)) {
+        throw new AuthError('Некорректная роль пользователя в токене', HTTP_UNAUTHORIZED);
     }
 
     return {

@@ -10,11 +10,12 @@ import {
   SessionUser,
   setAuthCookiesAndExtractUser,
 } from '../../../utils/auth-cookies';
+import { getBackendUrl } from '../../../utils/backend-url';
 
 export default defineEventHandler(
   async (event: H3Event<EventHandlerRequest>): Promise<{ user: SessionUser }> => {
     const body = await readBody(event);
-    const backendUrl: string = process.env['BACKEND_URL'] || 'http://localhost:8080';
+    const backendUrl: string = getBackendUrl();
 
     const response: Response = await fetch(`${backendUrl}/auth/login`, {
       method: 'POST',

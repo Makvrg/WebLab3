@@ -1,6 +1,7 @@
 import { defineEventHandler, EventHandlerRequest, getCookie,
   getRequestURL, H3Event, proxyRequest } from 'h3';
 import { Buffer } from 'node:buffer';
+import { getBackendUrl } from '../../utils/backend-url';
 
 async function readNodeStream(req: any): Promise<string> {
   if (req.body) {
@@ -15,8 +16,7 @@ async function readNodeStream(req: any): Promise<string> {
 
 export default defineEventHandler(
   async (event: H3Event<EventHandlerRequest>): Promise<any> => {
-    const rawBackendUrl: string = process.env['BACKEND_URL'] || 'http://backend:8080';
-    const backendUrl: string = rawBackendUrl.replace(/\/+$/, '');
+    const backendUrl: string = getBackendUrl();
     const token: string | undefined = getCookie(event, 'accessToken');
 
     const url: URL = getRequestURL(event);

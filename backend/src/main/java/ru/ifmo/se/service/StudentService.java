@@ -1,7 +1,10 @@
 package ru.ifmo.se.service;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.json.bind.Jsonb;
+import jakarta.json.bind.JsonbBuilder;
 import jakarta.json.bind.JsonbConfig;
 import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
@@ -14,10 +17,13 @@ import ru.ifmo.se.entity.Student;
 import ru.ifmo.se.exceptions.NotFoundException;
 import ru.ifmo.se.exceptions.NotUniqueIdException;
 import ru.ifmo.se.exceptions.ValidationException;
+import ru.ifmo.se.repository.AuditRepository;
 import ru.ifmo.se.repository.OutboxRepository;
 import ru.ifmo.se.repository.StudentRepository;
 import ru.ifmo.se.security.UserPrincipal;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,37 +33,59 @@ public class StudentService {
 
     private final StudentRepository studentRepository;
     private final OutboxRepository outboxRepository;
+    private final AuditRepository auditRepository;
     private final Validator validator;
+    private final Jsonb jsonb;
 
     @Inject
     public StudentService(StudentRepository studentRepository,
                           Validator validator,
-                          OutboxRepository outboxRepository) {
+                          OutboxRepository outboxRepository,
+                          AuditRepository auditRepository) {
         this.studentRepository = studentRepository;
         this.validator = validator;
         this.outboxRepository = outboxRepository;
+        this.auditRepository = auditRepository;
+        this.jsonb = JsonbBuilder.create(new JsonbConfig().withNullValues(true));
+    }
+
+    @PreDestroy
+    void destroy() {
+        if (jsonb != null) {
+            try {
+                jsonb.close();
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     private void recordAuditEvent(
             String action,
             String source,
             UserPrincipal actor,
-            Object isuId,
-            Object beforeState,
-            Object afterState
+            Integer isuId,
+            StudentDto beforeState,
+            StudentDto afterState
     ) {
         UUID eventId = UUID.randomUUID();
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+
+        Integer actorUserId = actor != null ? actor.getUserId() : null;
+        String actorLogin = actor != null ? actor.getName() : null;
+        String actorRole = (actor != null && actor.getRole() != null)
+                ? actor.getRole().name()
+                : null;
 
         Map<String, Object> actorMap = new LinkedHashMap<>();
         if (actor != null) {
-            actorMap.put("userId", actor.getUserId());
-            actorMap.put("login", actor.getName());
-            actorMap.put("role", actor.getRole());
+            actorMap.put("userId", actorUserId);
+            actorMap.put("login", actorLogin);
+            actorMap.put("role", actorRole);
         }
 
         Map<String, Object> event = new LinkedHashMap<>();
         event.put("eventId", eventId.toString());
-        event.put("timestamp", java.time.Instant.now().toString());
+        event.put("timestamp", now.toInstant().toString());
         event.put("action", action);
         event.put("source", source);
         event.put("actor", actorMap);
@@ -65,10 +93,23 @@ public class StudentService {
         event.put("before", beforeState);
         event.put("after", afterState);
 
-        JsonbConfig jsonbConfig = new jakarta.json.bind.JsonbConfig().withNullValues(true);
-        try (jakarta.json.bind.Jsonb jsonb =
-                     jakarta.json.bind.JsonbBuilder.create(jsonbConfig)) {
+        try {
+            String beforeJson = beforeState != null ? jsonb.toJson(beforeState) : null;
+            String afterJson = afterState != null ? jsonb.toJson(afterState) : null;
             String jsonPayload = jsonb.toJson(event);
+
+            auditRepository.save(
+                    eventId,
+                    now,
+                    action,
+                    source,
+                    actorUserId,
+                    actorLogin,
+                    actorRole,
+                    isuId,
+                    beforeJson,
+                    afterJson
+            );
             outboxRepository.saveEvent(eventId, action, jsonPayload);
         } catch (Exception e) {
             throw new RuntimeException("Не удалось сформировать событие аудита", e);
@@ -148,9 +189,10 @@ public class StudentService {
 
         Student newStudent = toEntity(data);
         studentRepository.addStudent(newStudent);
+        StudentDto afterDto = toDto(newStudent);
         recordAuditEvent("CREATE", source, actor,
-                newStudent.getIsuId(), null, newStudent);
-        return toDto(newStudent);
+                newStudent.getIsuId(), null, afterDto);
+        return afterDto;
     }
 
     @Transactional
@@ -167,14 +209,14 @@ public class StudentService {
         Student updatedStudent = toEntity(data);
 
         StudentDto before = getStudent(isuId);
-        Student after = updatedStudent;
+        StudentDto after = toDto(updatedStudent);
 
         if (!studentRepository.updateStudentByIsuId(isuId, updatedStudent)) {
             throw new NotFoundException("Студент с ИСУ " + isuId + " не найден.");
         }
         recordAuditEvent("UPDATE", source, actor, isuId, before, after);
 
-        return toDto(updatedStudent);
+        return after;
     }
 
     @Transactional

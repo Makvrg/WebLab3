@@ -13,6 +13,7 @@ services:
     environment:
       - BACKEND_URL=${BACKEND_URL}
       - NODE_BACKEND_URL=${NODE_BACKEND_URL}
+      - WEBRTC_ICE_SERVERS=${WEBRTC_ICE_SERVERS:-}
     depends_on:
       - backend
 
@@ -25,10 +26,14 @@ services:
       DB_NAME: ${POSTGRES_DB}
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_PRIVATE_KEY_PATH: /run/secrets/jwt_private.pem
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
       NODE_BACKEND_URL: ${NODE_BACKEND_URL}
       CORS_ORIGIN: ${CORS_ORIGIN}
+    volumes:
+      - ./secrets/jwt_private.pem:/run/secrets/jwt_private.pem:ro
+      - ./secrets/jwt_public.pem:/run/secrets/jwt_public.pem:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -40,15 +45,15 @@ services:
     environment:
       PORT: 4000
       JAVA_BACKEND_URL: ${BACKEND_URL}
-      AUDIT_FILE_PATH: /app/data/audit.ndjson
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN}
-      WEBRTC_PUBLIC_IP: ${WEBRTC_PUBLIC_IP:-127.0.0.1}
+      WEBRTC_PUBLIC_IP: ${WEBRTC_PUBLIC_IP}
       WEBRTC_PORT_MIN: 40000
       WEBRTC_PORT_MAX: 40009
+      WEBRTC_ICE_SERVERS: ${WEBRTC_ICE_SERVERS:-}
     volumes:
-      - node_audit_data:/app/data
+      - ./secrets/jwt_public.pem:/run/secrets/jwt_public.pem:ro
     depends_on:
       - backend
 
@@ -71,4 +76,3 @@ services:
 
 volumes:
   postgres_data:
-  node_audit_data:

@@ -1,10 +1,11 @@
 import {defineEventHandler, readBody, createError,
   H3Event, EventHandlerRequest} from 'h3';
+import { getBackendUrl } from '../../../utils/backend-url';
 
 export default defineEventHandler(
   async (event: H3Event<EventHandlerRequest>): Promise<{ success: true }> => {
     const body = await readBody(event);
-    const backendUrl: string = process.env['BACKEND_URL'] || 'http://localhost:8080';
+    const backendUrl: string = getBackendUrl();
 
     const response: Response = await fetch(`${backendUrl}/auth/register`, {
       method: 'POST',

@@ -11,12 +11,13 @@ import {
   clearAuthCookies,
   setAuthCookiesAndExtractUser,
 } from '../../../utils/auth-cookies';
+import { getBackendUrl } from '../../../utils/backend-url';
 
 export default defineEventHandler(
   async (event: H3Event<EventHandlerRequest>): Promise<{ user: SessionUser }> => {
     const refreshToken: string | undefined = getCookie(event, 'refreshToken');
     const refreshTokenId: string | undefined = getCookie(event, 'refreshTokenId');
-    const backendUrl: string = process.env['BACKEND_URL'] || 'http://localhost:8080';
+    const backendUrl: string = getBackendUrl();
 
     if (!refreshToken || !refreshTokenId) {
       throw createError({

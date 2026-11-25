@@ -2,22 +2,44 @@ import http from 'node:http';
 import { config } from './config.js';
 import { readJsonBody, sendJson } from './http/httpUtils.js';
 import { authenticateRequest } from './security/jwtVerifier.js';
-import { initAuditStore, appendAuditEvent, getAuditEvents } from './audit/auditStore.js';
 import { appEvents } from './events.js';
 import { handleCsvExport } from './csv/csvExportStream.js';
 import { handleCsvImport } from './csv/csvImportHandler.js';
-import { attachSignalingServer } from './webrtc/wsServer.js';
 import { PeerManager } from './webrtc/peerManager.js';
+
+const LISTEN_HOST = '0.0.0.0';
+const MAX_RECENT_EVENT_IDS = 1000;
+const SHUTDOWN_TIMEOUT_MS = 5_000;
+const ADMIN_ROLE = 'ADMIN';
+
+const HTTP_STATUS = Object.freeze({
+   OK: 200,
+   BAD_REQUEST: 400,
+   UNAUTHORIZED: 401,
+   FORBIDDEN: 403,
+   NOT_FOUND: 404,
+   PAYLOAD_TOO_LARGE: 413,
+   INTERNAL_SERVER_ERROR: 500,
+});
 
 const peerManager = new PeerManager();
 peerManager.bindAppEvents(appEvents);
 
-appEvents.on('audit:created', (event) => {
-   console.log(
-       `[Audit] Новое событие: ${event.action} | Студент: ${event.isuId} | Автор: ${event.actor?.login}`
-   );
-   appEvents.emit('student:changed', event);
-});
+const recentEventIds = new Set();
+
+function rememberEventId(eventId) {
+   if (recentEventIds.has(eventId)) {
+      return false;
+   }
+   recentEventIds.add(eventId);
+   if (recentEventIds.size > MAX_RECENT_EVENT_IDS) {
+      const oldestEventId = recentEventIds.values().next().value;
+      if (oldestEventId !== undefined) {
+         recentEventIds.delete(oldestEventId);
+      }
+   }
+   return true;
+}
 
 const server = http.createServer(async (req, res) => {
    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
@@ -25,7 +47,7 @@ const server = http.createServer(async (req, res) => {
 
    try {
       if (req.method === 'GET' && (pathname === '/health' || pathname === '/api/rt/health')) {
-         return sendJson(res, 200, {
+         return sendJson(res, HTTP_STATUS.OK, {
             status: 'ok',
             service: 'node-backend',
             activePeers: peerManager.size,
@@ -35,48 +57,50 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST' && pathname === '/internal/events') {
          const secret = req.headers['x-internal-secret'];
          if (secret !== config.internalApiSecret) {
-            return sendJson(res, 403, { error: 'Forbidden: invalid internal secret' });
+            return sendJson(res, HTTP_STATUS.FORBIDDEN, { error: 'Forbidden: invalid internal secret' });
          }
 
          const event = await readJsonBody(req);
-         const result = await appendAuditEvent(event);
-         return sendJson(res, 200, { status: 'accepted', ...result });
+         if (!event || typeof event !== 'object' || Array.isArray(event) || !event.eventId) {
+            throw new Error('INVALID_EVENT');
+         }
+
+         const eventId = String(event.eventId);
+         if (!rememberEventId(eventId)) {
+            return sendJson(res, HTTP_STATUS.OK, { status: 'accepted', duplicate: true });
+         }
+
+         console.log(
+             `[Audit] Новое событие: ${event.action} | Студент: ${event.isuId} | Автор: ${event.actor?.login}`
+         );
+         appEvents.emit('student:changed', event);
+         return sendJson(res, HTTP_STATUS.OK, { status: 'accepted', duplicate: false });
       }
 
-      if (req.method === 'GET' && pathname === '/api/rt/audit') {
+      if (req.method === 'POST' && pathname === '/api/rtc/session') {
          const user = authenticateRequest(req);
          if (!user) {
-            return sendJson(res, 401, { error: 'Unauthorized' });
+            return sendJson(res, HTTP_STATUS.UNAUTHORIZED, { error: 'Unauthorized' });
          }
-         if (user.role !== 'ADMIN') {
-            return sendJson(res, 403, { error: 'Forbidden: ADMIN role required' });
+         if (user.role !== ADMIN_ROLE) {
+            return sendJson(res, HTTP_STATUS.FORBIDDEN, { error: 'Forbidden: ADMIN role required' });
          }
 
-         const parsedPage = Number(searchParams.get('page'));
-         const page = Number.isFinite(parsedPage) ? Math.max(1, Math.trunc(parsedPage)) : 1;
+         const body = await readJsonBody(req);
+         if (
+             !body ||
+             typeof body !== 'object' ||
+             Array.isArray(body) ||
+             typeof body.sdp !== 'string' ||
+             body.sdp.trim().length === 0
+         ) {
+            return sendJson(res, HTTP_STATUS.BAD_REQUEST, {
+               error: 'Поле sdp обязательно и должно быть непустой строкой',
+            });
+         }
 
-         const rawSize = searchParams.get('pageSize') ?? searchParams.get('size') ?? 20;
-         const parsedSize = Number(rawSize);
-         const size = Number.isFinite(parsedSize)
-             ? Math.min(100, Math.max(1, Math.trunc(parsedSize)))
-             : 20;
-
-         const result = getAuditEvents({
-            page,
-            size,
-            action: searchParams.get('action') || undefined,
-            source: searchParams.get('source') || undefined,
-            isuId: searchParams.get('isuId') || undefined,
-            actorLogin: searchParams.get('actorLogin') || undefined,
-         });
-
-         return sendJson(res, 200, {
-            items: result.content,
-            total: result.totalElements,
-            page: result.page,
-            pageSize: result.size,
-            totalPages: result.totalPages,
-         });
+         const answer = await peerManager.createSession(user, body.sdp);
+         return sendJson(res, HTTP_STATUS.OK, answer);
       }
 
       if (req.method === 'GET' && pathname === '/api/rt/csv/export') {
@@ -87,48 +111,20 @@ const server = http.createServer(async (req, res) => {
          return await handleCsvImport(req, res, searchParams);
       }
 
-      return sendJson(res, 404, { error: 'Not Found', path: pathname });
+      return sendJson(res, HTTP_STATUS.NOT_FOUND, { error: 'Not Found', path: pathname });
    } catch (err) {
       if (err.message === 'PAYLOAD_TOO_LARGE') {
-         return sendJson(res, 413, { error: 'Payload too large' });
+         return sendJson(res, HTTP_STATUS.PAYLOAD_TOO_LARGE, { error: 'Payload too large' });
       }
-      if (err.message === 'INVALID_JSON' || err.message === 'INVALID_EVENT') {
-         return sendJson(res, 400, { error: err.message });
+      if (err.message === 'INVALID_JSON' || err.message === 'INVALID_EVENT' || err.message === 'INVALID_SDP') {
+         return sendJson(res, HTTP_STATUS.BAD_REQUEST, { error: err.message });
       }
       console.error('[HTTP Error]', err);
       if (!res.headersSent) {
-         return sendJson(res, 500, { error: 'Internal Server Error' });
+         return sendJson(res, HTTP_STATUS.INTERNAL_SERVER_ERROR, { error: 'Internal Server Error' });
       }
       res.end();
    }
-});
-
-attachSignalingServer(server, {
-   onClientConnected(wsClient) {
-      const peerId = peerManager.registerClient(wsClient);
-      console.log(
-          `[Signaling] Подключен клиент: peerId=${peerId}, user=${wsClient.user.login}, role=${wsClient.user.role}`
-      );
-   },
-
-   onSignalMessage(wsClient, message) {
-      const peerId = peerManager.getPeerIdByClient(wsClient);
-      if (!peerId) {
-         return;
-      }
-      peerManager.handleSignalMessage(peerId, message).catch((err) => {
-         console.error(`[Signaling] Ошибка обработки сообщения от peerId=${peerId}:`, err);
-      });
-   },
-
-   onClientDisconnected(wsClient) {
-      const peerId = peerManager.getPeerIdByClient(wsClient);
-      if (!peerId) {
-         return;
-      }
-      peerManager.removePeer(peerId);
-      console.log(`[Signaling] Клиент отключен: peerId=${peerId}`);
-   },
 });
 
 let isShuttingDown = false;
@@ -145,7 +141,7 @@ function shutdown(signal) {
    const forceExitTimer = setTimeout(() => {
       console.error('[System] Принудительное завершение по таймауту');
       process.exit(1);
-   }, 5000);
+   }, SHUTDOWN_TIMEOUT_MS);
    forceExitTimer.unref();
 
    server.close(() => {
@@ -159,9 +155,8 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 async function bootstrap() {
-   await initAuditStore();
-   server.listen(config.port, '0.0.0.0', () => {
-      console.log(`node-backend listening on 0.0.0.0:${config.port}`);
+   server.listen(config.port, LISTEN_HOST, () => {
+      console.log(`node-backend listening on ${LISTEN_HOST}:${config.port}`);
    });
 }
 

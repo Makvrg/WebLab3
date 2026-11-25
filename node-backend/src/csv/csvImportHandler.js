@@ -82,7 +82,10 @@ export async function handleCsvImport(req, res, searchParams) {
     let updated = 0;
     let failed = parsed.errors.length;
 
-    const baseJavaUrl = (config.javaBackendUrl || 'http://backend:8080').replace(/\/+$/, '');
+    if (!config.javaBackendUrl || config.javaBackendUrl.trim().length === 0) {
+        throw new Error('JAVA_BACKEND_URL не задан в переменных окружения');
+    }
+    const baseJavaUrl = config.javaBackendUrl.trim().replace(/\/+$/, '');
     const javaStudentsUrl = `${baseJavaUrl}/students`;
     const authHeaders = {
         'Content-Type': 'application/json',

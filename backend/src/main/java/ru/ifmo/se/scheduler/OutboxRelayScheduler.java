@@ -45,9 +45,10 @@ public class OutboxRelayScheduler {
             return thread;
         });
         String rawNodeUrl = System.getenv("NODE_BACKEND_URL");
-        this.nodeUrl = (rawNodeUrl == null || rawNodeUrl.isBlank())
-                ? "http://node-backend:4000"
-                : rawNodeUrl.trim().replaceAll("/+$", "");
+        if (rawNodeUrl == null || rawNodeUrl.isBlank()) {
+            throw new IllegalStateException("Не задана переменная окружения NODE_BACKEND_URL");
+        }
+        this.nodeUrl = rawNodeUrl.trim().replaceAll("/+$", "");
         this.internalSecret = System.getenv("INTERNAL_API_SECRET");
     }
 

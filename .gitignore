@@ -44,3 +44,6 @@ backend/target/
 
 .env
 /frontend/.npmrc
+
+secrets/
+*.pem

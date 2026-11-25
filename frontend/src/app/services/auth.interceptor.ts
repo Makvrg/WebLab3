@@ -14,6 +14,11 @@ import { SSR_COOKIE } from '../tokens/ssr-cookie.token';
 
 export { SSR_COOKIE };
 
+const SSR_SELF_ORIGIN = 'http://localhost:3000';
+const RT_API_PREFIX = '/api/rt';
+const AUTH_PATH_SEGMENT = '/auth/';
+const HTTP_UNAUTHORIZED = 401;
+
 export const authInterceptor: HttpInterceptorFn = (
   req: HttpRequest<unknown>,
   next: HttpHandlerFn
@@ -24,7 +29,7 @@ export const authInterceptor: HttpInterceptorFn = (
 
   const ssrCookie: string | null = !isBrowser ? inject(SSR_COOKIE, { optional: true }) : null;
 
-  const isAuthEndpoint: boolean = req.url.includes('/auth/');
+  const isAuthEndpoint: boolean = req.url.includes(AUTH_PATH_SEGMENT);
 
   let targetReq: HttpRequest<unknown> = req;
   if (!isBrowser && req.url.startsWith('/')) {
@@ -33,12 +38,15 @@ export const authInterceptor: HttpInterceptorFn = (
       headers['cookie'] = String(ssrCookie);
     }
 
-    const baseTargetUrl: string = req.url.startsWith('/api/rt')
-      ? (typeof process !== 'undefined' && process.env['NODE_BACKEND_URL']
-          ? process.env['NODE_BACKEND_URL']
-          : 'http://node-backend:4000'
-      ).replace(/\/+$/, '')
-      : 'http://localhost:3000';
+    let baseTargetUrl = SSR_SELF_ORIGIN;
+    if (req.url.startsWith(RT_API_PREFIX)) {
+      const nodeBackendUrl: string | undefined =
+        typeof process !== 'undefined' ? process.env['NODE_BACKEND_URL'] : undefined;
+      if (!nodeBackendUrl || nodeBackendUrl.trim().length === 0) {
+        throw new Error('NODE_BACKEND_URL не задан в переменных окружения');
+      }
+      baseTargetUrl = nodeBackendUrl.trim().replace(/\/+$/, '');
+    }
 
     targetReq = req.clone({
       url: `${baseTargetUrl}${req.url}`,
@@ -51,7 +59,7 @@ export const authInterceptor: HttpInterceptorFn = (
       if (
         !isBrowser ||
         !(error instanceof HttpErrorResponse) ||
-        error.status !== 401 ||
+        error.status !== HTTP_UNAUTHORIZED ||
         isAuthEndpoint
       ) {
         return throwError((): unknown => error);

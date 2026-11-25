@@ -33,4 +33,8 @@
         <sqlFile path="db/migrations/7__create_outbox_undelivered_index.sql" relativeToChangelogFile="false" encoding="utf8"/>
     </changeSet>
 
+    <changeSet id="8" author="Max_Lekomscev">
+        <sqlFile path="db/migrations/8__create_audit_log_table.sql" relativeToChangelogFile="false" encoding="utf8"/>
+    </changeSet>
+
 </databaseChangeLog>

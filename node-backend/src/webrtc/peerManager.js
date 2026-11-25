@@ -3,91 +3,92 @@ import { RTCPeerConnection } from 'werift';
 import { config } from '../config.js';
 import {
     CHANNEL_TYPES,
-    SIGNAL_TYPES,
-    createAnswerMessage,
-    createCandidateMessage,
     createCsvProgressPayload,
-    createErrorMessage,
     createPongPayload,
     createStudentEventPayload,
-    createWelcomeMessage,
 } from './protocol.js';
 
-const DEFAULT_ICE_SERVERS = [
-    { urls: process.env.STUN_URL || 'stun:stun.l.google.com:19302' },
-];
+const ICE_GATHERING_TIMEOUT_MS = 2_500;
+const SESSION_CLEANUP_INTERVAL_MS = 15_000;
+const HANDSHAKE_TIMEOUT_MS = 30_000;
+const INACTIVITY_TIMEOUT_MS = 60_000;
+const ADMIN_ROLE = 'ADMIN';
+const TERMINAL_STATES = new Set(['failed', 'closed']);
+
+function waitForIceGatheringComplete(pc, timeoutMs = ICE_GATHERING_TIMEOUT_MS) {
+    if (pc.iceGatheringState === 'complete') {
+        return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+        let settled = false;
+
+        const finish = () => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            clearTimeout(timer);
+            pc.onicegatheringstatechange = null;
+            pc.onicecandidate = null;
+            resolve();
+        };
+
+        const timer = setTimeout(finish, timeoutMs);
+
+        pc.onicegatheringstatechange = () => {
+            if (pc.iceGatheringState === 'complete') {
+                finish();
+            }
+        };
+
+        pc.onicecandidate = (event) => {
+            const candidate = event?.candidate !== undefined ? event.candidate : event;
+            if (!candidate || !candidate.candidate) {
+                finish();
+            }
+        };
+    });
+}
 
 export class PeerManager {
     constructor() {
-        /** @type {Map<string, object>} */
         this.sessions = new Map();
-        /** @type {WeakMap<object, string>} */
-        this.clientToPeerId = new WeakMap();
         this.boundEmitters = new WeakSet();
+
+        this.cleanupTimer = setInterval(() => {
+            this.#cleanupStaleSessions();
+        }, SESSION_CLEANUP_INTERVAL_MS);
+        this.cleanupTimer.unref();
     }
 
     get size() {
         return this.sessions.size;
     }
 
-    getPeerIdByClient(wsClient) {
-        return this.clientToPeerId.get(wsClient) ?? null;
-    }
-
-    registerClient(wsClient) {
+    async createSession(user, offerSdp) {
         const peerId = crypto.randomUUID();
-        const { userId, login, role } = wsClient.user;
-
-        const session = {
-            peerId,
-            userId,
-            login,
-            role,
-            wsClient,
-            pc: null,
-            dataChannel: null,
-            pendingCandidates: [],
-            remoteDescriptionSet: false,
-            createdAt: Date.now(),
-        };
-
-        this.sessions.set(peerId, session);
-        this.clientToPeerId.set(wsClient, peerId);
-
-        wsClient.sendJson(createWelcomeMessage(peerId, role));
-        return peerId;
-    }
-
-    async handleSignalMessage(peerId, message) {
-        const session = this.sessions.get(peerId);
-        if (!session) {
-            return;
-        }
-
-        if (message.type === SIGNAL_TYPES.OFFER) {
-            await this.#handleOffer(session, message.sdp);
-            return;
-        }
-
-        if (message.type === SIGNAL_TYPES.CANDIDATE) {
-            await this.#handleCandidate(session, message.candidate);
-        }
-    }
-
-    async #handleOffer(session, sdp) {
-        this.#cleanupPeerConnection(session);
-        session.pendingCandidates = [];
-        session.remoteDescriptionSet = false;
+        const now = Date.now();
 
         const rtcConfig = {
-            iceServers: DEFAULT_ICE_SERVERS,
+            iceServers: config.webrtcIceServers,
             icePortRange: [config.webrtcPortMin, config.webrtcPortMax],
             iceAdditionalHostAddresses: config.webrtcPublicIp ? [config.webrtcPublicIp] : [],
             iceUseIpv6: false,
         };
 
         const pc = new RTCPeerConnection(rtcConfig);
-        session.pc = pc;
+        const session = {
+            peerId,
+            userId: user.userId,
+            login: user.login,
+            role: user.role,
+            pc,
+            dataChannel: null,
+            connected: false,
+            createdAt: now,
+            lastActivity: now,
+        };
 
         pc.ondatachannel = (event) => {
             if (session.pc !== pc) {
@@ -100,35 +101,12 @@ export class PeerManager {
             this.#attachDataChannel(session, pc, channel);
         };
 
-        pc.onicecandidate = (event) => {
-            if (session.pc !== pc) {
-                return;
-            }
-            const candidate = event?.candidate !== undefined ? event.candidate : event;
-            if (!candidate || !candidate.candidate) {
-                return;
-            }
-
-            const serializedCandidate =
-                typeof candidate.toJSON === 'function'
-                    ? candidate.toJSON()
-                    : {
-                        candidate: candidate.candidate,
-                        sdpMid: candidate.sdpMid ?? null,
-                        sdpMLineIndex: candidate.sdpMLineIndex ?? null,
-                    };
-
-            session.wsClient.sendJson(createCandidateMessage(serializedCandidate));
-        };
-
         const checkTerminalState = () => {
             if (session.pc !== pc) {
                 return;
             }
-            const connState = pc.connectionState;
-            const iceState = pc.iceConnectionState;
-            if (connState === 'failed' || connState === 'closed' || iceState === 'failed' || iceState === 'closed') {
-                this.removePeer(session.peerId);
+            if (TERMINAL_STATES.has(pc.connectionState) || TERMINAL_STATES.has(pc.iceConnectionState)) {
+                this.removePeer(peerId);
             }
         };
 
@@ -136,61 +114,38 @@ export class PeerManager {
         pc.oniceconnectionstatechange = checkTerminalState;
 
         try {
-            await pc.setRemoteDescription({ type: 'offer', sdp });
-            if (session.pc !== pc) {
-                return;
+            try {
+                await pc.setRemoteDescription({ type: 'offer', sdp: offerSdp });
+            } catch (err) {
+                const sdpErr = new Error('INVALID_SDP');
+                sdpErr.cause = err;
+                throw sdpErr;
             }
-            session.remoteDescriptionSet = true;
-
-            if (session.pendingCandidates.length > 0) {
-                const queued = session.pendingCandidates.splice(0, session.pendingCandidates.length);
-                for (const candidate of queued) {
-                    if (session.pc !== pc) {
-                        return;
-                    }
-                    await this.#safeAddIceCandidate(pc, candidate);
-                }
-            }
-
             const answer = await pc.createAnswer();
-            if (session.pc !== pc) {
-                return;
-            }
             await pc.setLocalDescription(answer);
-            if (session.pc !== pc) {
-                return;
+            await waitForIceGatheringComplete(pc, ICE_GATHERING_TIMEOUT_MS);
+
+            const answerSdp = pc.localDescription?.sdp;
+            if (!answerSdp) {
+                throw new Error('Не удалось получить локальный SDP answer');
             }
 
-            const answerSdp = pc.localDescription?.sdp || answer.sdp;
-            session.wsClient.sendJson(createAnswerMessage(answerSdp));
+            session.lastActivity = Date.now();
+            this.sessions.set(peerId, session);
+
+            console.log(
+                `[WebRTC] Сессия создана: peerId=${peerId}, user=${session.login} (${session.role})`
+            );
+
+            return {
+                peerId,
+                type: 'answer',
+                sdp: answerSdp,
+            };
         } catch (err) {
-            if (session.pc === pc) {
-                this.#cleanupPeerConnection(session);
-                session.wsClient.sendJson(
-                    createErrorMessage(err?.message || 'Ошибка установки WebRTC-соединения', 'WEBRTC_NEGOTIATION_ERROR')
-                );
-            }
-        }
-    }
-
-    async #handleCandidate(session, candidate) {
-        if (!candidate || !candidate.candidate) {
-            return;
-        }
-
-        if (!session.pc || !session.remoteDescriptionSet) {
-            session.pendingCandidates.push(candidate);
-            return;
-        }
-
-        await this.#safeAddIceCandidate(session.pc, candidate);
-    }
-
-    async #safeAddIceCandidate(pc, candidate) {
-        try {
-            await pc.addIceCandidate(candidate);
-        } catch (err) {
-            console.warn('[WebRTC] Не удалось добавить ICE-кандидат:', err?.message || err);
+            this.sessions.delete(peerId);
+            this.#cleanupPeerConnection(session);
+            throw err;
         }
     }
 
@@ -204,6 +159,8 @@ export class PeerManager {
             if (session.pc !== pc || session.dataChannel !== channel) {
                 return;
             }
+            session.connected = true;
+            session.lastActivity = Date.now();
             console.log(
                 `[WebRTC] DataChannel открыт: peerId=${session.peerId}, user=${session.login} (${session.role})`
             );
@@ -211,7 +168,7 @@ export class PeerManager {
 
         channel.onclose = () => {
             if (session.dataChannel === channel) {
-                session.dataChannel = null;
+                this.removePeer(session.peerId);
             }
         };
 
@@ -241,8 +198,11 @@ export class PeerManager {
 
             try {
                 const parsed = JSON.parse(text);
-                if (parsed && parsed.type === CHANNEL_TYPES.PING && channel.readyState === 'open') {
-                    channel.send(JSON.stringify(createPongPayload(parsed.ts)));
+                if (parsed && parsed.type === CHANNEL_TYPES.PING) {
+                    session.lastActivity = Date.now();
+                    if (channel.readyState === 'open') {
+                        channel.send(JSON.stringify(createPongPayload(parsed.ts)));
+                    }
                 }
             } catch {
             }
@@ -262,7 +222,6 @@ export class PeerManager {
                 channel.close();
             }
         } catch {
-            // Игнорируем ошибки при закрытии уже закрытого канала
         }
     }
 
@@ -278,16 +237,30 @@ export class PeerManager {
             try {
                 pc.ondatachannel = null;
                 pc.onicecandidate = null;
+                pc.onicegatheringstatechange = null;
                 pc.onconnectionstatechange = null;
                 pc.oniceconnectionstatechange = null;
                 pc.close();
             } catch {
-                // Игнорируем ошибки при закрытии уже закрытого соединения
             }
         }
 
-        session.pendingCandidates = [];
-        session.remoteDescriptionSet = false;
+        session.connected = false;
+    }
+
+    #cleanupStaleSessions() {
+        const now = Date.now();
+        for (const [peerId, session] of this.sessions.entries()) {
+            if (!session.connected && now - session.createdAt > HANDSHAKE_TIMEOUT_MS) {
+                console.log(`[WebRTC] Таймаут открытия DataChannel, закрытие сессии: peerId=${peerId}`);
+                this.removePeer(peerId);
+                continue;
+            }
+            if (now - session.lastActivity > INACTIVITY_TIMEOUT_MS) {
+                console.log(`[WebRTC] Таймаут неактивности, закрытие сессии: peerId=${peerId}`);
+                this.removePeer(peerId);
+            }
+        }
     }
 
     removePeer(peerId) {
@@ -297,14 +270,11 @@ export class PeerManager {
         }
 
         this.sessions.delete(peerId);
-        if (session.wsClient) {
-            this.clientToPeerId.delete(session.wsClient);
-        }
-
         this.#cleanupPeerConnection(session);
     }
 
     closeAll() {
+        clearInterval(this.cleanupTimer);
         for (const peerId of Array.from(this.sessions.keys())) {
             this.removePeer(peerId);
         }
@@ -324,7 +294,7 @@ export class PeerManager {
             const serialized = JSON.stringify(payload);
 
             for (const session of this.sessions.values()) {
-                if (session.role !== 'ADMIN') {
+                if (session.role !== ADMIN_ROLE) {
                     continue;
                 }
                 if (session.dataChannel && session.dataChannel.readyState === 'open') {

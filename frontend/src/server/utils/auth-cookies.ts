@@ -2,6 +2,10 @@ import { H3Event, EventHandlerRequest, setCookie, deleteCookie } from 'h3';
 import { Buffer } from 'node:buffer';
 import { Role } from '../../app/entity/Role';
 
+const ACCESS_TOKEN_MAX_AGE_SECONDS = 15 * 60;
+const REFRESH_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
+const COOKIE_PATH = '/';
+
 export interface AuthTokensPayload {
   accessToken: string;
   refreshToken: string;
@@ -25,22 +29,22 @@ export function setAuthCookiesAndExtractUser(
   setCookie(event, 'accessToken', tokens.accessToken, {
     httpOnly: true,
     sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 15,
+    path: COOKIE_PATH,
+    maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS,
   });
 
   setCookie(event, 'refreshToken', tokens.refreshToken, {
     httpOnly: true,
     sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 7,
+    path: COOKIE_PATH,
+    maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
   });
 
   setCookie(event, 'refreshTokenId', String(tokens.refreshTokenId), {
     httpOnly: true,
     sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 7,
+    path: COOKIE_PATH,
+    maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
   });
 
   return {
@@ -53,7 +57,7 @@ export function setAuthCookiesAndExtractUser(
 }
 
 export function clearAuthCookies(event: H3Event<EventHandlerRequest>): void {
-  deleteCookie(event, 'accessToken', { path: '/' });
-  deleteCookie(event, 'refreshToken', { path: '/' });
-  deleteCookie(event, 'refreshTokenId', { path: '/' });
+  deleteCookie(event, 'accessToken', { path: COOKIE_PATH });
+  deleteCookie(event, 'refreshToken', { path: COOKIE_PATH });
+  deleteCookie(event, 'refreshTokenId', { path: COOKIE_PATH });
 }

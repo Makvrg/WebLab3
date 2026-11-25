@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { RT_URL } from './api.constants';
+import { AUDIT_URL } from './api.constants';
 import { AuditFilter, AuditPageResponse } from '../entity/AuditEvent';
 
 @Injectable({ providedIn: 'root' })
@@ -39,6 +39,6 @@ export class AuditService {
       params = params.set('actorLogin', filters.actorLogin.trim());
     }
 
-    return this.http.get<AuditPageResponse>(`${RT_URL}/audit`, { params });
+    return this.http.get<AuditPageResponse>(AUDIT_URL, { params });
   }
 }

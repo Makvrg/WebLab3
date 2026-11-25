@@ -48,7 +48,10 @@ function buildFilterParams(searchParams) {
 }
 
 async function* fetchStudentsGenerator(rawToken, filterParams) {
-    const baseJavaUrl = (config.javaBackendUrl || 'http://backend:8080').replace(/\/+$/, '');
+    if (!config.javaBackendUrl || config.javaBackendUrl.trim().length === 0) {
+        throw new Error('JAVA_BACKEND_URL не задан в переменных окружения');
+    }
+    const baseJavaUrl = config.javaBackendUrl.trim().replace(/\/+$/, '');
     let pageNumber = 1;
     const pageSize = 100;
     let previousFirstId = null;

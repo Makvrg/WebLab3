@@ -4,47 +4,28 @@ import {
   OnDestroy,
   PLATFORM_ID,
   Signal,
+  TransferState,
   WritableSignal,
   inject,
+  makeStateKey,
   signal,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, Subject, firstValueFrom } from 'rxjs';
 import {
   CsvProgressEvent,
   StudentRealtimeEvent,
   WebRtcConnectionStatus,
 } from '../entity/RealtimeEvents';
-import { RT_URL } from './api.constants';
-import { AuthService } from './auth.service';
+import { RTC_SESSION_URL } from './api.constants';
+import { WEBRTC_ICE_SERVERS } from '../tokens/webrtc-ice-servers.token';
 
-interface SignalWelcomeMessage {
-  type: 'welcome';
-  peerId: string;
-  role: string;
-}
-
-interface SignalAnswerMessage {
-  type: 'answer';
+interface RtcSessionAnswer {
+  peerId?: string;
+  type: RTCSdpType;
   sdp: string;
 }
-
-interface SignalCandidateMessage {
-  type: 'candidate';
-  candidate: RTCIceCandidateInit;
-}
-
-interface SignalErrorMessage {
-  type: 'error';
-  code?: string;
-  message: string;
-}
-
-type InboundSignalMessage =
-  | SignalWelcomeMessage
-  | SignalAnswerMessage
-  | SignalCandidateMessage
-  | SignalErrorMessage;
 
 interface ChannelPongMessage {
   type: 'PONG';
@@ -53,20 +34,32 @@ interface ChannelPongMessage {
 
 type InboundChannelMessage = StudentRealtimeEvent | CsvProgressEvent | ChannelPongMessage;
 
+const WEBRTC_ICE_SERVERS_STATE_KEY = makeStateKey<RTCIceServer[]>('WEBRTC_ICE_SERVERS');
 const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
 ];
+const DATA_CHANNEL_LABEL = 'student-events';
 
+const ICE_GATHERING_TIMEOUT_MS = 2_500;
 const HEARTBEAT_INTERVAL_MS = 20_000;
 const BASE_RECONNECT_DELAY_MS = 1_000;
 const MAX_RECONNECT_DELAY_MS = 15_000;
+const RECONNECT_BACKOFF_BASE = 2;
+
+const HTTP_UNAUTHORIZED = 401;
+const HTTP_FORBIDDEN = 403;
 
 @Injectable({ providedIn: 'root' })
 export class WebRtcService implements OnDestroy {
   private readonly platformId: Object = inject(PLATFORM_ID);
   private readonly ngZone: NgZone = inject(NgZone);
-  private readonly authService: AuthService = inject(AuthService);
+  private readonly http: HttpClient = inject(HttpClient);
+  private readonly transferState: TransferState = inject(TransferState);
+  private readonly ssrIceServers: RTCIceServer[] | null = inject(WEBRTC_ICE_SERVERS, {
+    optional: true,
+  });
   private readonly isBrowser: boolean = isPlatformBrowser(this.platformId);
+  private readonly iceServers: RTCIceServer[] = this.resolveIceServers();
 
   private readonly _status: WritableSignal<WebRtcConnectionStatus> =
     signal<WebRtcConnectionStatus>('disconnected');
@@ -82,12 +75,8 @@ export class WebRtcService implements OnDestroy {
   readonly csvProgress$: Observable<CsvProgressEvent> =
     this._csvProgress$.asObservable();
 
-  private ws: WebSocket | null = null;
   private pc: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
-
-  private pendingRemoteCandidates: RTCIceCandidateInit[] = [];
-  private remoteDescriptionSet: boolean = false;
 
   private manuallyDisconnected: boolean = true;
   private reconnectAttempts: number = 0;
@@ -102,18 +91,20 @@ export class WebRtcService implements OnDestroy {
 
     this.manuallyDisconnected = false;
 
-    const wsActive: boolean =
-      this.ws !== null &&
-      (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING);
-    const dcOpen: boolean =
-      this.dataChannel !== null && this.dataChannel.readyState === 'open';
-
-    if (wsActive || dcOpen) {
+    const dcState = this.dataChannel?.readyState;
+    const pcState = this.pc?.connectionState;
+    if (
+      dcState === 'open' ||
+      (this.pc !== null &&
+        pcState !== 'failed' &&
+        pcState !== 'closed' &&
+        dcState !== 'closed')
+    ) {
       return;
     }
 
     this.clearReconnectTimer();
-    this.openSignalingSocket();
+    void this.establishConnection();
   }
 
   disconnect(): void {
@@ -124,7 +115,6 @@ export class WebRtcService implements OnDestroy {
     this.clearReconnectTimer();
     this.clearHeartbeatTimer();
     this.cleanupPeerResources();
-    this.cleanupSocket();
 
     this.updateStatus('disconnected');
   }
@@ -135,151 +125,46 @@ export class WebRtcService implements OnDestroy {
     this._csvProgress$.complete();
   }
 
-  private openSignalingSocket(): void {
+  private resolveIceServers(): RTCIceServer[] {
+    if (!this.isBrowser) {
+      const servers =
+        this.ssrIceServers && this.ssrIceServers.length > 0
+          ? this.ssrIceServers
+          : DEFAULT_ICE_SERVERS;
+      this.transferState.set(WEBRTC_ICE_SERVERS_STATE_KEY, servers);
+      return servers;
+    }
+
+    if (this.transferState.hasKey(WEBRTC_ICE_SERVERS_STATE_KEY)) {
+      const cached = this.transferState.get(WEBRTC_ICE_SERVERS_STATE_KEY, null);
+      this.transferState.remove(WEBRTC_ICE_SERVERS_STATE_KEY);
+      if (Array.isArray(cached) && cached.length > 0) {
+        return cached;
+      }
+    }
+
+    return DEFAULT_ICE_SERVERS;
+  }
+
+  private async establishConnection(): Promise<void> {
     if (this.manuallyDisconnected) {
       return;
     }
 
     this.cleanupPeerResources();
-    this.cleanupSocket();
 
     const generation: number = ++this.connectionGeneration;
     this.updateStatus('connecting');
 
-    const protocol: string = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const signalUrl: string = `${protocol}//${window.location.host}${RT_URL}/signal`;
-
-    let socket: WebSocket;
-    try {
-      socket = new WebSocket(signalUrl);
-    } catch {
-      this.handleConnectionFailure(generation);
-      return;
-    }
-
-    this.ws = socket;
-
-    socket.onmessage = (event: MessageEvent): void => {
-      if (generation !== this.connectionGeneration || this.ws !== socket) {
-        return;
-      }
-
-      if (typeof event.data !== 'string') {
-        return;
-      }
-
-      let message: InboundSignalMessage;
-      try {
-        message = JSON.parse(event.data) as InboundSignalMessage;
-      } catch {
-        return;
-      }
-
-      void this.handleSignalMessage(generation, message);
-    };
-
-    socket.onerror = (): void => {
-      if (generation !== this.connectionGeneration || this.ws !== socket) {
-        return;
-      }
-      if (this.dataChannel?.readyState !== 'open') {
-        this.handleConnectionFailure(generation);
-      }
-    };
-
-    socket.onclose = (): void => {
-      if (generation !== this.connectionGeneration) {
-        return;
-      }
-      if (this.ws === socket) {
-        this.ws = null;
-      }
-      if (this.dataChannel?.readyState !== 'open') {
-        this.handleConnectionFailure(generation);
-      }
-    };
-  }
-
-  private async handleSignalMessage(
-    generation: number,
-    message: InboundSignalMessage
-  ): Promise<void> {
-    if (!message || typeof message !== 'object') {
-      return;
-    }
-
-    switch (message.type) {
-      case 'welcome': {
-        await this.startPeerNegotiation(generation);
-        break;
-      }
-
-      case 'answer': {
-        if (!this.pc || !message.sdp) {
-          return;
-        }
-        try {
-          await this.pc.setRemoteDescription({
-            type: 'answer',
-            sdp: message.sdp,
-          });
-          if (generation !== this.connectionGeneration || !this.pc) {
-            return;
-          }
-          this.remoteDescriptionSet = true;
-          await this.flushPendingCandidates(generation);
-        } catch {
-          this.handleConnectionFailure(generation);
-        }
-        break;
-      }
-
-      case 'candidate': {
-        if (!message.candidate) {
-          return;
-        }
-        if (!this.pc || !this.remoteDescriptionSet) {
-          this.pendingRemoteCandidates.push(message.candidate);
-          return;
-        }
-        await this.safeAddIceCandidate(message.candidate);
-        break;
-      }
-
-      case 'error': {
-        console.warn('[WebRTC Signaling] Ошибка от сервера:', message.message);
-        break;
-      }
-
-      default:
-        break;
-    }
-  }
-
-  private async startPeerNegotiation(generation: number): Promise<void> {
-    this.cleanupPeerResources();
-
     const peerConnection = new RTCPeerConnection({
-      iceServers: DEFAULT_ICE_SERVERS,
+      iceServers: this.iceServers,
     });
     this.pc = peerConnection;
 
-    const channel = peerConnection.createDataChannel('student-events', {
+    const channel = peerConnection.createDataChannel(DATA_CHANNEL_LABEL, {
       ordered: true,
     });
     this.dataChannel = channel;
-
-    peerConnection.onicecandidate = (event: RTCPeerConnectionIceEvent): void => {
-      if (generation !== this.connectionGeneration || this.pc !== peerConnection) {
-        return;
-      }
-      if (event.candidate && event.candidate.candidate) {
-        this.sendSignal({
-          type: 'candidate',
-          candidate: event.candidate.toJSON(),
-        });
-      }
-    };
 
     peerConnection.onconnectionstatechange = (): void => {
       if (generation !== this.connectionGeneration || this.pc !== peerConnection) {
@@ -362,6 +247,11 @@ export class WebRtcService implements OnDestroy {
         return;
       }
 
+      await this.waitForIceGatheringComplete(peerConnection, ICE_GATHERING_TIMEOUT_MS);
+      if (generation !== this.connectionGeneration || this.pc !== peerConnection) {
+        return;
+      }
+
       const offerSdp: string | undefined =
         peerConnection.localDescription?.sdp ?? offer.sdp;
       if (!offerSdp) {
@@ -369,48 +259,76 @@ export class WebRtcService implements OnDestroy {
         return;
       }
 
-      this.sendSignal({
-        type: 'offer',
-        sdp: offerSdp,
+      const response = await firstValueFrom(
+        this.http.post<RtcSessionAnswer>(RTC_SESSION_URL, {
+          type: 'offer',
+          sdp: offerSdp,
+        })
+      );
+
+      if (generation !== this.connectionGeneration || this.pc !== peerConnection) {
+        return;
+      }
+
+      if (!response?.sdp) {
+        this.handleConnectionFailure(generation);
+        return;
+      }
+
+      await peerConnection.setRemoteDescription({
+        type: response.type || 'answer',
+        sdp: response.sdp,
       });
-    } catch {
+    } catch (err: unknown) {
+      if (
+        err instanceof HttpErrorResponse &&
+        (err.status === HTTP_UNAUTHORIZED || err.status === HTTP_FORBIDDEN)
+      ) {
+        this.disconnect();
+        return;
+      }
       this.handleConnectionFailure(generation);
     }
   }
 
-  private async flushPendingCandidates(generation: number): Promise<void> {
-    if (this.pendingRemoteCandidates.length === 0) {
-      return;
+  private waitForIceGatheringComplete(
+    pc: RTCPeerConnection,
+    timeoutMs: number = ICE_GATHERING_TIMEOUT_MS
+  ): Promise<void> {
+    if (pc.iceGatheringState === 'complete') {
+      return Promise.resolve();
     }
 
-    const queued: RTCIceCandidateInit[] = this.pendingRemoteCandidates.splice(
-      0,
-      this.pendingRemoteCandidates.length
-    );
+    return new Promise<void>((resolve) => {
+      let settled = false;
 
-    for (const candidate of queued) {
-      if (generation !== this.connectionGeneration || !this.pc) {
-        return;
-      }
-      await this.safeAddIceCandidate(candidate);
-    }
-  }
+      const finish = (): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        pc.removeEventListener('icegatheringstatechange', onStateChange);
+        pc.removeEventListener('icecandidate', onIceCandidate);
+        resolve();
+      };
 
-  private async safeAddIceCandidate(candidate: RTCIceCandidateInit): Promise<void> {
-    if (!this.pc) {
-      return;
-    }
-    try {
-      await this.pc.addIceCandidate(candidate);
-    } catch (err) {
-      console.warn('[WebRTC] Ошибка добавления ICE-кандидата:', err);
-    }
-  }
+      const onStateChange = (): void => {
+        if (pc.iceGatheringState === 'complete') {
+          finish();
+        }
+      };
 
-  private sendSignal(payload: Record<string, unknown>): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(payload));
-    }
+      const onIceCandidate = (event: RTCPeerConnectionIceEvent): void => {
+        if (!event.candidate) {
+          finish();
+        }
+      };
+
+      const timer = setTimeout(finish, timeoutMs);
+      pc.addEventListener('icegatheringstatechange', onStateChange);
+      pc.addEventListener('icecandidate', onIceCandidate);
+    });
   }
 
   private startHeartbeat(generation: number, channel: RTCDataChannel): void {
@@ -441,7 +359,6 @@ export class WebRtcService implements OnDestroy {
     this.connectionGeneration++;
     this.clearHeartbeatTimer();
     this.cleanupPeerResources();
-    this.cleanupSocket();
 
     if (this.manuallyDisconnected) {
       this.updateStatus('disconnected');
@@ -458,36 +375,15 @@ export class WebRtcService implements OnDestroy {
     }
 
     const delay: number = Math.min(
-      BASE_RECONNECT_DELAY_MS * Math.pow(2, this.reconnectAttempts),
+      BASE_RECONNECT_DELAY_MS * Math.pow(RECONNECT_BACKOFF_BASE, this.reconnectAttempts),
       MAX_RECONNECT_DELAY_MS
     );
     this.reconnectAttempts++;
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      void this.attemptReconnect();
+      void this.establishConnection();
     }, delay);
-  }
-
-  private async attemptReconnect(): Promise<void> {
-    if (this.manuallyDisconnected) {
-      return;
-    }
-
-    if (this.reconnectAttempts > 0) {
-      try {
-        await firstValueFrom(this.authService.refreshTokens());
-      } catch {
-        this.disconnect();
-        return;
-      }
-    }
-
-    if (this.manuallyDisconnected) {
-      return;
-    }
-
-    this.openSignalingSocket();
   }
 
   private cleanupPeerResources(): void {
@@ -503,7 +399,6 @@ export class WebRtcService implements OnDestroy {
           dc.close();
         }
       } catch {
-        // Игнорируем ошибки при закрытии канала
       }
     }
 
@@ -511,32 +406,9 @@ export class WebRtcService implements OnDestroy {
       const peerConn = this.pc;
       this.pc = null;
       try {
-        peerConn.onicecandidate = null;
         peerConn.onconnectionstatechange = null;
         peerConn.close();
       } catch {
-        // Игнорируем ошибки при закрытии соединения
-      }
-    }
-
-    this.pendingRemoteCandidates = [];
-    this.remoteDescriptionSet = false;
-  }
-
-  private cleanupSocket(): void {
-    if (this.ws) {
-      const socket = this.ws;
-      this.ws = null;
-      try {
-        socket.onopen = null;
-        socket.onmessage = null;
-        socket.onerror = null;
-        socket.onclose = null;
-        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
-          socket.close();
-        }
-      } catch {
-        // Игнорируем ошибки при закрытии сокета
       }
     }
   }
